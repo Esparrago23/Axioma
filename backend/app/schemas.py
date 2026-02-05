@@ -47,3 +47,17 @@ class VoteCreate(SQLModel):
 class VoteResponse(SQLModel):
     new_score: int
     report_status: ReportStatus
+    
+class UserRead(SQLModel):
+    id: int
+    username: str
+    email: str
+    reputation_score: int
+
+class UserUpdate(SQLModel):
+    username: Optional[str] = None
+    password: Optional[str] = None 
+
+class ReportUpdate(SQLModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
