@@ -19,6 +19,22 @@ def create_report(report_data: ReportCreate, session: SessionDep, current_user: 
     session.refresh(new_report)
     return new_report
 
+@router.get("/all", response_model=List[ReportRead])
+def get_all_reports(
+    session: SessionDep,
+    offset: int = 0,
+    limit: int = Query(default=50, le=100)
+):
+    """Devuelve todos los reportes activos sin importar la ubicación."""
+    statement = (
+        select(Report)
+        .where(Report.status == ReportStatus.ACTIVE)
+        .offset(offset)
+        .limit(limit)
+        .order_by(Report.created_at.desc())
+    )
+    return session.exec(statement).all()
+
 @router.get("/", response_model=List[ReportRead])
 def get_reports(
     session: SessionDep,
@@ -42,6 +58,28 @@ def get_report_detail(report_id: int, session: SessionDep):
     report = session.get(Report, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    return report
+
+@router.patch("/{report_id}", response_model=ReportRead)
+def update_report(
+    report_id: int, 
+    report_update: ReportUpdate, 
+    session: SessionDep, 
+    current_user: UserDep
+):
+    report = session.get(Report, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    
+    if report.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No toques lo que no es tuyo")
+
+    update_data = report_update.model_dump(exclude_unset=True)
+    report.sqlmodel_update(update_data)
+    
+    session.add(report)
+    session.commit()
+    session.refresh(report)
     return report
 
 @router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
