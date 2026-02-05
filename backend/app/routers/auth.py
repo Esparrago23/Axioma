@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlmodel import select
 from app.models import User
-from app.schemas import LoginRequest, TokenResponse
-from app.deps import SessionDep, get_password_hash, create_access_token, verify_password 
+from app.schemas import LoginRequest, TokenResponse, UserRead 
+from app.deps import SessionDep, get_password_hash, create_access_token, verify_password
 
 router = APIRouter()
 
-@router.post("/register", response_model=TokenResponse)
+@router.post("/register", response_model=UserRead)
 def register(user_data: LoginRequest, session: SessionDep):
     existing_user = session.exec(select(User).where(User.email == user_data.email)).first()
     if existing_user:
@@ -21,13 +21,7 @@ def register(user_data: LoginRequest, session: SessionDep):
     session.commit()
     session.refresh(new_user)
     
-    access_token = create_access_token(data={"sub": new_user.email})
-    return TokenResponse(
-        access_token=access_token, 
-        user_id=new_user.id, 
-        username=new_user.username,
-        reputation=new_user.reputation_score
-    )
+    return new_user
 
 @router.post("/login", response_model=TokenResponse)
 def login(user_data: LoginRequest, session: SessionDep):
