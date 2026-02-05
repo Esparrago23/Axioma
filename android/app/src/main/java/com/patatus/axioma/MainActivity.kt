@@ -4,44 +4,44 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.patatus.axioma.ui.theme.AxiomaTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.patatus.axioma.core.di.AppContainer
+import com.patatus.axioma.features.auth.domain.usecases.LoginUseCase
+import com.patatus.axioma.features.auth.presentation.screens.LoginScreen
+import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModel
+import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModelFactory
+import com.patatus.axioma.ui.theme.AppTheme
+
+import android.widget.Toast
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val appContainer = AppContainer(applicationContext)
+
         setContent {
-            AxiomaTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+            AppTheme {
+                val loginUseCase = LoginUseCase(appContainer.authRepository)
+                val factory = LoginViewModelFactory(loginUseCase)
+
+                val viewModel: LoginViewModel = viewModel(factory = factory)
+
+                LoginScreen(
+                    viewModel = viewModel,
+                    onNavigateHome = {
+
+                        Toast.makeText(
+                            applicationContext,
+                            "¡Bienvenido!",
+                            Toast.LENGTH_LONG
+                        ).show()
+
+                    }
+                )
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    AxiomaTheme {
-        Greeting("Android")
     }
 }
