@@ -34,7 +34,25 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+        resValues = true
     }
+    flavorDimensions.add("environment")
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            resValue("string", "app_name", "Axioma (DEV)")
+            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
+        }
+
+        create("prod") {
+            dimension = "environment"
+            resValue("string", "app_name", "Axioma Prod")
+            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
+        }
+    }
+
 }
 
 dependencies {
