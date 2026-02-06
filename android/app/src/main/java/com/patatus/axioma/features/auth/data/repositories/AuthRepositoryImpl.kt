@@ -5,6 +5,7 @@ import com.patatus.axioma.features.auth.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.auth.data.datasources.remote.models.LoginRequest
 import com.patatus.axioma.features.auth.domain.entities.User
 import com.patatus.axioma.features.auth.domain.repositories.AuthRepository
+import com.patatus.axioma.core.network.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -18,6 +19,7 @@ class AuthRepositoryImpl(
         return withContext(Dispatchers.IO) {
             try {
                 val response = apiService.login(LoginRequest(email, pass))
+                TokenManager.saveToken(response.accessToken)
                 Result.success(response.toDomain())
             } catch (e: HttpException) {
                 val errorBody = e.response()?.errorBody()?.string()
