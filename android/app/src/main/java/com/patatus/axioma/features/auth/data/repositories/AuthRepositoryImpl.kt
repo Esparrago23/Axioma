@@ -19,8 +19,16 @@ class AuthRepositoryImpl(
             try {
                 val response = apiService.login(LoginRequest(email, pass))
                 Result.success(response.toDomain())
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val errorMessage = try {
+                    JSONObject(errorBody).getString("detail")
+                } catch (jsonException: Exception) {
+                    "Error desconocido en el servidor (${e.code()})"
+                }
+                Result.failure(Exception(errorMessage))
             } catch (e: Exception) {
-                Result.failure(e)
+                Result.failure(Exception("Error de conexión. Verifica tu internet."))
             }
         }
     }
