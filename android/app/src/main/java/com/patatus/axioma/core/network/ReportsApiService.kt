@@ -2,7 +2,15 @@ package com.patatus.axioma.core.network
 
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportResponse
+import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
+import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
+import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
 import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.PATCH
+import retrofit2.http.Path
+import retrofit2.http.Query
 import retrofit2.http.POST
 
 interface ReportsApiService {
