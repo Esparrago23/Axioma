@@ -43,13 +43,13 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".dev"
             resValue("string", "app_name", "Axioma (DEV)")
-            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.enginner/\"")
+            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
         }
 
         create("prod") {
             dimension = "environment"
             resValue("string", "app_name", "Axioma Prod")
-            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.enginner/\"")
+            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
         }
     }
 

@@ -14,3 +14,10 @@ data class TokenResponse(
     val username: String,
     val reputation: Int
 )
+
+data class UserResponse(
+    val id: Int,
+    val username: String,
+    val email: String,
+    @SerializedName("reputation_score") val reputationScore: Int
+)

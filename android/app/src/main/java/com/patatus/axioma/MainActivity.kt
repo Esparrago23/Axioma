@@ -11,6 +11,11 @@ import com.patatus.axioma.features.auth.domain.usecases.LoginUseCase
 import com.patatus.axioma.features.auth.presentation.screens.LoginScreen
 import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModel
 import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModelFactory
+
+import com.patatus.axioma.features.auth.domain.usecases.RegisterUseCase
+import com.patatus.axioma.features.auth.presentation.screens.RegisterScreen
+import com.patatus.axioma.features.auth.presentation.viewmodels.RegisterViewModel
+import com.patatus.axioma.features.auth.presentation.viewmodels.RegisterViewModelFactory
 import com.patatus.axioma.ui.theme.AppTheme
 
 import android.widget.Toast
@@ -24,10 +29,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppTheme {
-                val loginUseCase = LoginUseCase(appContainer.authRepository)
+                /*val loginUseCase = LoginUseCase(appContainer.authRepository)
                 val factory = LoginViewModelFactory(loginUseCase)
 
                 val viewModel: LoginViewModel = viewModel(factory = factory)
+
+
 
                 LoginScreen(
                     viewModel = viewModel,
@@ -39,6 +46,27 @@ class MainActivity : ComponentActivity() {
                             Toast.LENGTH_LONG
                         ).show()
 
+                    }
+                )*/
+                val registerUseCase = RegisterUseCase(appContainer.authRepository)
+                val factory = RegisterViewModelFactory(registerUseCase)
+                val viewModel: RegisterViewModel = viewModel(factory = factory)
+
+                RegisterScreen(
+                    viewModel = viewModel,
+                    onRegisterSuccess = {
+                        Toast.makeText(
+                            applicationContext,
+                            "¡Registro Exitoso! Revisa tu base de datos.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    },
+                    onNavigateToLogin = {
+                        Toast.makeText(
+                            applicationContext,
+                            "Aquí iríamos al Login",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
             }
