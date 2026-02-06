@@ -32,7 +32,7 @@ data class ReportUpdateRequest(
 )
 
 data class VoteRequest(
-    @SerializedName("vote_value") val voteValue: String
+    @SerializedName("vote_value") val voteValue: Int
 )
 
 data class VoteResponse(

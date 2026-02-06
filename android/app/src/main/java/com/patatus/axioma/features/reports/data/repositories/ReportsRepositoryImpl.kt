@@ -70,16 +70,28 @@ class ReportsRepositoryImpl(
     }
 
     override suspend fun deleteReport(id: Int): Result<Boolean> {
-        return safeApiCall {
-            api.deleteReport(id)
-            true
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.deleteReport(id)
+
+                if (response.isSuccessful) {
+                    Result.success(true)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    val msg = try { JSONObject(errorBody).getString("detail") } catch (e: Exception) { "Error al eliminar" }
+                    Result.failure(Exception(msg))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 
     override suspend fun voteReport(id: Int, isUpvote: Boolean): Result<VoteResponse> {
         return safeApiCall {
-            val voteStr = if (isUpvote) "UP" else "DOWN"
-            api.voteReport(id, VoteRequest(voteStr))
+            val voteInt = if (isUpvote) 1 else -1
+
+            api.voteReport(id, VoteRequest(voteInt))
         }
     }
 

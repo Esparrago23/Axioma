@@ -4,8 +4,25 @@ from sqlmodel import select
 from app.models import Report, ReportStatus, Vote, User
 from app.schemas import ReportCreate, ReportRead, ReportUpdate, VoteCreate, VoteResponse
 from app.deps import SessionDep, UserDep
+from math import radians, sin, cos, sqrt, atan2
 
 router = APIRouter()
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371000  # metros
+
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+
+    a = (
+        sin(dlat / 2) ** 2
+        + cos(radians(lat1))
+        * cos(radians(lat2))
+        * sin(dlon / 2) ** 2
+    )
+
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    return R * c
 
 @router.post("/", response_model=ReportRead)
 def create_report(report_data: ReportCreate, session: SessionDep, current_user: UserDep):
@@ -38,20 +55,33 @@ def get_all_reports(
 @router.get("/", response_model=List[ReportRead])
 def get_reports(
     session: SessionDep,
-    lat: float, 
-    long: float, 
+    lat: float,
+    long: float,
     radius_meters: float = 2000
 ):
-    delta_deg = radius_meters / 111000.0
-    statement = (
-        select(Report)
-        .where(Report.status == ReportStatus.ACTIVE)
-        .where(Report.latitude >= lat - delta_deg)
-        .where(Report.latitude <= lat + delta_deg)
-        .where(Report.longitude >= long - delta_deg)
-        .where(Report.longitude <= long + delta_deg)
-    )
-    return session.exec(statement).all()
+    reports = session.exec(
+        select(Report).where(Report.status == ReportStatus.ACTIVE)
+    ).all()
+
+    nearby_reports = []
+
+    for report in reports:
+
+        if report.latitude is None or report.longitude is None:
+            continue
+
+        distance = haversine(
+            lat,
+            long,
+            report.latitude,
+            report.longitude
+        )
+
+        if distance <= radius_meters:
+            nearby_reports.append(report)
+
+    return nearby_reports
+
 
 @router.get("/{report_id}", response_model=ReportRead)
 def get_report_detail(report_id: int, session: SessionDep):

@@ -1,26 +1,31 @@
 package com.patatus.axioma
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.patatus.axioma.core.di.AppContainer
 import com.patatus.axioma.features.auth.di.AuthModule
 import com.patatus.axioma.features.auth.presentation.screens.LoginScreen
-import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModel
-
 import com.patatus.axioma.features.auth.presentation.screens.RegisterScreen
-import com.patatus.axioma.features.auth.presentation.viewmodels.RegisterViewModel
-
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import com.patatus.axioma.features.reports.di.ReportsModule
+import com.patatus.axioma.features.reports.presentation.screens.CreateReportScreen
+import com.patatus.axioma.features.reports.presentation.screens.FeedScreen
+import com.patatus.axioma.features.reports.presentation.screens.ReportDetailScreen
 import com.patatus.axioma.ui.theme.AppTheme
 
-import android.widget.Toast
+
+enum class Screen {
+    LOGIN,
+    REGISTER,
+    FEED,
+    CREATE_REPORT,
+    REPORT_DETAIL
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,37 +36,78 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppTheme {
-                val authModule = AuthModule(appContainer)
+                // Instanciamos los módulos una sola vez
+                val authModule = remember { AuthModule(appContainer) }
+                val reportsModule = remember { ReportsModule(appContainer) }
 
-                var isLoginScreen by remember { mutableStateOf(false) }
+                // ESTADO DE NAVEGACIÓN
+                var currentScreen by remember { mutableStateOf(Screen.LOGIN) }
+                // Para guardar el ID del reporte seleccionado
+                var selectedReportId by remember { mutableStateOf<Int?>(null) }
 
-                if (isLoginScreen) {
-                    val viewModel: LoginViewModel = viewModel(
-                        factory = authModule.provideLoginViewModelFactory()
-                    )
+                val context = LocalContext.current
 
-                    LoginScreen(
-                        viewModel = viewModel,
-                        onNavigateHome = {
-                            Toast.makeText(this, "¡Bienvenido!", Toast.LENGTH_LONG).show()
-                        },
-                    )
+                when (currentScreen) {
+                    // --- PANTALLAS DE AUTH ---
+                    Screen.LOGIN -> {
+                        LoginScreen(
+                            viewModel = viewModel(factory = authModule.provideLoginViewModelFactory()),
+                            onNavigateHome = {
+                                Toast.makeText(context, "¡Bienvenido!", Toast.LENGTH_SHORT).show()
+                                currentScreen = Screen.FEED // <--- AQUÍ OCURRE LA MAGIA
+                            }
+                        )
+                    }
+                    Screen.REGISTER -> {
+                        RegisterScreen(
+                            viewModel = viewModel(factory = authModule.provideRegisterViewModelFactory()),
+                            onRegisterSuccess = {
+                                Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                                currentScreen = Screen.LOGIN
+                            },
+                            onNavigateToLogin = {
+                                currentScreen = Screen.LOGIN
+                            }
+                        )
+                    }
 
-                } else {
-
-                    val viewModel: RegisterViewModel = viewModel(
-                        factory = authModule.provideRegisterViewModelFactory()
-                    )
-                    RegisterScreen(
-                        viewModel = viewModel,
-                        onRegisterSuccess = {
-                            Toast.makeText(this, "Registro exitoso", Toast.LENGTH_SHORT).show()
-                            isLoginScreen = true
-                        },
-                        onNavigateToLogin = {
-                            isLoginScreen = true
+                    // --- PANTALLAS DE REPORTES ---
+                    Screen.FEED -> {
+                        FeedScreen(
+                            viewModel = viewModel(factory = reportsModule.provideFeedViewModelFactory()),
+                            onNavigateToCreate = {
+                                currentScreen = Screen.CREATE_REPORT
+                            },
+                            onNavigateToDetail = { reportId ->
+                                selectedReportId = reportId
+                                currentScreen = Screen.REPORT_DETAIL
+                            }
+                        )
+                    }
+                    Screen.CREATE_REPORT -> {
+                        CreateReportScreen(
+                            viewModel = viewModel(factory = reportsModule.provideCreateReportViewModelFactory()),
+                            onBack = {
+                                // Al terminar o cancelar, volvemos al Feed y refrescamos
+                                currentScreen = Screen.FEED
+                            }
+                        )
+                    }
+                    Screen.REPORT_DETAIL -> {
+                        if (selectedReportId != null) {
+                            ReportDetailScreen(
+                                reportId = selectedReportId!!,
+                                viewModel = viewModel(factory = reportsModule.provideReportDetailViewModelFactory()),
+                                onBack = {
+                                    selectedReportId = null
+                                    currentScreen = Screen.FEED
+                                }
+                            )
+                        } else {
+                            // Si por error llegamos aquí sin ID, volvemos al Feed
+                            currentScreen = Screen.FEED
                         }
-                    )
+                    }
                 }
             }
         }
