@@ -5,6 +5,7 @@ import com.patatus.axioma.features.reports.data.datasources.remote.models.Report
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -40,7 +41,7 @@ interface ReportsApiService {
     ): ReportResponse
 
     @DELETE("reports/{id}")
-    suspend fun deleteReport(@Path("id") id: Int): Void?
+    suspend fun deleteReport(@Path("id") id: Int): Response<Unit>
 
     @POST("reports/{id}/vote")
     suspend fun voteReport(
