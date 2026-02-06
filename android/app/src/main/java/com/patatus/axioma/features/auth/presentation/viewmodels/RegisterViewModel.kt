@@ -31,7 +31,7 @@ class RegisterViewModel(
 
     fun onRegister() {
         if (_email.value.isBlank() || _password.value.isBlank()) {
-            _uiState.value = RegisterUiState.Error("Llena todos los campos, no seas flojo.")
+            _uiState.value = RegisterUiState.Error("Llena todos los campos.")
             return
         }
 

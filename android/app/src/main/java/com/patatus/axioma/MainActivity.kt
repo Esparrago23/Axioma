@@ -7,15 +7,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.patatus.axioma.core.di.AppContainer
-import com.patatus.axioma.features.auth.domain.usecases.LoginUseCase
+import com.patatus.axioma.features.auth.di.AuthModule
 import com.patatus.axioma.features.auth.presentation.screens.LoginScreen
 import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModel
-import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModelFactory
 
-import com.patatus.axioma.features.auth.domain.usecases.RegisterUseCase
 import com.patatus.axioma.features.auth.presentation.screens.RegisterScreen
 import com.patatus.axioma.features.auth.presentation.viewmodels.RegisterViewModel
-import com.patatus.axioma.features.auth.presentation.viewmodels.RegisterViewModelFactory
+
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.patatus.axioma.ui.theme.AppTheme
 
 import android.widget.Toast
@@ -29,46 +31,38 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppTheme {
-                /*val loginUseCase = LoginUseCase(appContainer.authRepository)
-                val factory = LoginViewModelFactory(loginUseCase)
+                val authModule = AuthModule(appContainer)
 
-                val viewModel: LoginViewModel = viewModel(factory = factory)
+                var isLoginScreen by remember { mutableStateOf(false) }
 
+                if (isLoginScreen) {
+                    val viewModel: LoginViewModel = viewModel(
+                        factory = authModule.provideLoginViewModelFactory()
+                    )
 
+                    LoginScreen(
+                        viewModel = viewModel,
+                        onNavigateHome = {
+                            Toast.makeText(this, "¡Bienvenido!", Toast.LENGTH_LONG).show()
+                        },
+                    )
 
-                LoginScreen(
-                    viewModel = viewModel,
-                    onNavigateHome = {
+                } else {
 
-                        Toast.makeText(
-                            applicationContext,
-                            "¡Bienvenido!",
-                            Toast.LENGTH_LONG
-                        ).show()
-
-                    }
-                )*/
-                val registerUseCase = RegisterUseCase(appContainer.authRepository)
-                val factory = RegisterViewModelFactory(registerUseCase)
-                val viewModel: RegisterViewModel = viewModel(factory = factory)
-
-                RegisterScreen(
-                    viewModel = viewModel,
-                    onRegisterSuccess = {
-                        Toast.makeText(
-                            applicationContext,
-                            "¡Registro Exitoso! Revisa tu base de datos.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    },
-                    onNavigateToLogin = {
-                        Toast.makeText(
-                            applicationContext,
-                            "Aquí iríamos al Login",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                )
+                    val viewModel: RegisterViewModel = viewModel(
+                        factory = authModule.provideRegisterViewModelFactory()
+                    )
+                    RegisterScreen(
+                        viewModel = viewModel,
+                        onRegisterSuccess = {
+                            Toast.makeText(this, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                            isLoginScreen = true
+                        },
+                        onNavigateToLogin = {
+                            isLoginScreen = true
+                        }
+                    )
+                }
             }
         }
     }
