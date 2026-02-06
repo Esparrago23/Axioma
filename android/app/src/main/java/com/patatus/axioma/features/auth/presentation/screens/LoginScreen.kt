@@ -16,8 +16,9 @@ import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModel
 
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel, // Inyectado desde fuera
-    onNavigateHome: () -> Unit
+    viewModel: LoginViewModel,
+    onNavigateHome: () -> Unit,
+    onNavigateToRegister: () -> Unit
 ) {
     val email by viewModel.email.collectAsStateWithLifecycle()
     val password by viewModel.password.collectAsStateWithLifecycle()
