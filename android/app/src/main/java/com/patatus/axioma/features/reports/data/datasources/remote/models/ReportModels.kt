@@ -25,3 +25,17 @@ data class ReportResponse(
     val status: String,
     @SerializedName("created_at") val createdAt: String
 )
+
+data class ReportUpdateRequest(
+    val title: String? = null,
+    val description: String? = null
+)
+
+data class VoteRequest(
+    @SerializedName("vote_value") val voteValue: String
+)
+
+data class VoteResponse(
+    @SerializedName("new_score") val newScore: Int,
+    @SerializedName("report_status") val reportStatus: String
+)
