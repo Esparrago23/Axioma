@@ -3,11 +3,19 @@ from sqlmodel import select
 from app.models import User
 from app.schemas import LoginRequest, TokenResponse, UserRead 
 from app.deps import SessionDep, get_password_hash, create_access_token, verify_password
+import re
 
 router = APIRouter()
 
 @router.post("/register", response_model=UserRead)
 def register(user_data: LoginRequest, session: SessionDep):
+    email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    if not re.match(email_regex, user_data.email):
+        raise HTTPException(status_code=400, detail="El formato del correo es inválido")
+
+    if len(user_data.password) < 8:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 8 caracteres")
+
     existing_user = session.exec(select(User).where(User.email == user_data.email)).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
