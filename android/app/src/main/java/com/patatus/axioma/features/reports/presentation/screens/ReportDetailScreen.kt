@@ -1,11 +1,12 @@
 package com.patatus.axioma.features.reports.presentation.screens
 
-
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ThumbUp
@@ -21,13 +22,14 @@ import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.presentation.viewmodels.DetailUiState
 import com.patatus.axioma.features.reports.presentation.viewmodels.ReportDetailViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportDetailScreen(
     reportId: Int,
     viewModel: ReportDetailViewModel,
     onBack: () -> Unit
 ) {
-    // Cargar reporte al iniciar
+
     LaunchedEffect(reportId) {
         viewModel.loadReport(reportId)
     }
@@ -36,7 +38,6 @@ fun ReportDetailScreen(
     val context = LocalContext.current
     var showEditDialog by remember { mutableStateOf(false) }
 
-    // Manejo de eliminación exitosa
     LaunchedEffect(uiState) {
         if (uiState is DetailUiState.Deleted) {
             Toast.makeText(context, "Reporte eliminado", Toast.LENGTH_SHORT).show()
@@ -44,20 +45,56 @@ fun ReportDetailScreen(
         }
     }
 
-    Scaffold { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            when (val state = uiState) {
-                is DetailUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                is DetailUiState.Error -> {
-                    Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Error: ${state.msg}", color = MaterialTheme.colorScheme.error)
-                        Button(onClick = { viewModel.loadReport(reportId) }) { Text("Reintentar") }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Detalle del reporte") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
                 }
+            )
+        }
+    ) { padding ->
+
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+
+            when (val state = uiState) {
+
+                is DetailUiState.Loading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+
+                is DetailUiState.Error -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "Error: ${state.msg}",
+                            color = MaterialTheme.colorScheme.error
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Button(onClick = { viewModel.loadReport(reportId) }) {
+                            Text("Reintentar")
+                        }
+                    }
+                }
+
                 is DetailUiState.Success -> {
+
                     ReportDetailContent(
                         report = state.report,
-                        onVote = { isUp -> viewModel.vote(state.report.id, isUp) },
+                        onVote = { viewModel.vote(state.report.id, it) },
                         onEditClick = { showEditDialog = true },
                         onDeleteClick = { viewModel.deleteReport(state.report.id) }
                     )
@@ -73,6 +110,7 @@ fun ReportDetailScreen(
                         )
                     }
                 }
+
                 else -> {}
             }
         }
@@ -86,53 +124,121 @@ fun ReportDetailContent(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
             .verticalScroll(rememberScrollState())
+            .padding(16.dp)
     ) {
-        Text(text = report.title, style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(8.dp))
 
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            AssistChip(onClick = {}, label = { Text(report.category) })
-            Text(text = report.status, style = MaterialTheme.typography.labelLarge)
+        // CARD PRINCIPAL
+        Card(
+            shape = MaterialTheme.shapes.large,
+            elevation = CardDefaults.cardElevation(6.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+
+                Text(
+                    report.title,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(report.category) }
+                    )
+
+                    Text(
+                        report.status,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    report.description,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = report.description, style = MaterialTheme.typography.bodyLarge)
 
         Spacer(modifier = Modifier.height(24.dp))
-        Divider()
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // Área de Votos
-        Text("Reputación: ${report.credibilityScore}", style = MaterialTheme.typography.titleMedium)
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Button(onClick = { onVote(true) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
-                Icon(Icons.Default.ThumbUp, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Real")
-            }
-            Button(onClick = { onVote(false) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))) {
-                Icon(Icons.Default.ThumbUp, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Falso")
+        // ⭐ SECCIÓN VOTOS
+        Card(
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+
+                Text(
+                    "Reputación",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    "${report.credibilityScore}",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+
+                    FilledTonalButton(
+                        onClick = { onVote(true) }
+                    ) {
+                        Icon(Icons.Default.ThumbUp, null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Real")
+                    }
+
+                    FilledTonalButton(
+                        onClick = { onVote(false) }
+                    ) {
+                        Icon(Icons.Default.ThumbUp, null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Falso")
+                    }
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Área de Acciones (Editar/Borrar)
-        // Nota: Idealmente validarías si el usuario es el dueño antes de mostrar esto
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        // ⭐ SECCIÓN ACCIONES
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+
             OutlinedButton(onClick = onEditClick) {
-                Icon(Icons.Default.Edit, contentDescription = null)
+                Icon(Icons.Default.Edit, null)
+                Spacer(modifier = Modifier.width(6.dp))
                 Text("Editar")
             }
-            OutlinedButton(onClick = onDeleteClick, colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                Icon(Icons.Default.Delete, contentDescription = null)
+
+            OutlinedButton(
+                onClick = onDeleteClick,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(Icons.Default.Delete, null)
+                Spacer(modifier = Modifier.width(6.dp))
                 Text("Borrar")
             }
         }
@@ -145,24 +251,45 @@ fun EditReportDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
 ) {
+
     var title by remember { mutableStateOf(report.title) }
     var description by remember { mutableStateOf(report.description) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Editar Reporte") },
+
         text = {
             Column {
-                TextField(value = title, onValueChange = { title = it }, label = { Text("Título") })
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(value = description, onValueChange = { description = it }, label = { Text("Descripción") })
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Título") },
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Descripción") },
+                    minLines = 3
+                )
             }
         },
+
         confirmButton = {
-            Button(onClick = { onConfirm(title, description) }) { Text("Guardar") }
+            Button(onClick = { onConfirm(title, description) }) {
+                Text("Guardar")
+            }
         },
+
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
         }
     )
 }
