@@ -75,7 +75,8 @@ def update_report(
         raise HTTPException(status_code=403, detail="No toques lo que no es tuyo")
 
     update_data = report_update.model_dump(exclude_unset=True)
-    report.sqlmodel_update(update_data)
+    for key, value in update_data.items():
+        setattr(report, key, value)
     
     session.add(report)
     session.commit()
