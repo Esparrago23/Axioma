@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from sqlmodel import SQLModel
-from app.database import engine
+from backend.app.core.database import engine
 from app.routers import auth, reports, users
 
 @asynccontextmanager
