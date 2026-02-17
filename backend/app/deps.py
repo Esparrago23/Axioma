@@ -5,7 +5,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session, select
-from backend.app.core.database import engine
+from app.core.database import engine
 from app.models import User
 import os
 

@@ -2,7 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
 
-from backend.app.modules.reports.domain.entities import CategoryEnum, ReportStatus
+from app.modules.reports.domain.entities import CategoryEnum, ReportStatus
 
 class CreateReportDTO(BaseModel):
     title: str
