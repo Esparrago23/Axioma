@@ -11,7 +11,7 @@ def register(
 ):
     return controller.run(data)
 
-@router.post("/token")
+@router.post("/login")
 def login(
     data: LoginDTO,
     controller = Depends(get_login_controller)

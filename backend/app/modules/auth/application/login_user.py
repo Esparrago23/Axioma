@@ -1,17 +1,13 @@
+from fastapi import HTTPException, status
 from app.modules.auth.domain.repository import UserRepository
 from app.core.security import verify_password, create_access_token
-from fastapi import HTTPException, status
-from pydantic import BaseModel
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
+from app.modules.auth.infrastructure.dtos import TokenResponseDTO 
 
 class LoginUserUseCase:
     def __init__(self, repository: UserRepository):
         self.repository = repository
 
-    def execute(self, email: str, password: str) -> TokenResponse:
+    def execute(self, email: str, password: str) -> TokenResponseDTO:
         user = self.repository.get_by_email(email)
         
         if not user or not verify_password(password, user.hashed_password):
@@ -21,6 +17,12 @@ class LoginUserUseCase:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        # Crear token
         access_token = create_access_token(subject=user.id)
-        return TokenResponse(access_token=access_token, token_type="bearer")
+        
+        return TokenResponseDTO(
+            access_token=access_token,
+            token_type="bearer",
+            user_id=user.id,
+            username=user.username,
+            reputation=user.reputation_score
+        )

@@ -22,7 +22,7 @@ class Report(BaseModel):
     category: CategoryEnum
     latitude: float
     longitude: float
-    photo_url: str | None = None
+    photo_url: Optional[str] = None
     credibility_score: int = 0
     status: ReportStatus = ReportStatus.ACTIVE
     user_id: int
