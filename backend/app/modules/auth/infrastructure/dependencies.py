@@ -1,7 +1,6 @@
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials 
 from sqlmodel import Session
 
 from app.core.config import settings
@@ -16,7 +15,7 @@ from app.modules.auth.infrastructure.controllers.register_controller import Regi
 from app.modules.auth.infrastructure.controllers.login_controller import LoginController
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+security = HTTPBearer()
 
 def get_auth_repo(session: Session = Depends(get_session)) -> SQLUserRepository:
     return SQLUserRepository(session)
@@ -27,12 +26,9 @@ def get_register_controller(uc = Depends(get_register_uc)): return RegisterContr
 def get_login_controller(uc = Depends(get_login_uc)): return LoginController(uc)
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token_auth: HTTPAuthorizationCredentials = Depends(security), 
     repo: SQLUserRepository = Depends(get_auth_repo)
 ) -> User:
-    """
-    Decodifica el token y recupera el usuario actual usando el Repositorio.
-    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No se pudieron validar las credenciales",
@@ -40,6 +36,8 @@ def get_current_user(
     )
     
     try:
+        token = token_auth.credentials 
+        
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id_str: str = payload.get("sub")
         
@@ -51,9 +49,7 @@ def get_current_user(
     except (JWTError, ValueError):
         raise credentials_exception
     
-
     user = repo.get_by_id(user_id)
-    
     if user is None:
         raise credentials_exception
         
