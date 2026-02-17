@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlmodel import Field, SQLModel
+from sqlalchemy import Column, Integer, ForeignKey
 from app.modules.reports.domain.entities import ReportStatus
 
 # Tablas SQL puras
@@ -21,5 +22,5 @@ class VoteModel(SQLModel, table=True):
     __tablename__ = "votes"
     id: int | None = Field(default=None, primary_key=True)
     user_id: int
-    report_id: int = Field(foreign_key="reports.id")
+    report_id: int = Field(sa_column=Column(Integer, ForeignKey("reports.id", ondelete="CASCADE"), nullable=False))
     vote_value: int
