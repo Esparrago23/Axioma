@@ -6,4 +6,6 @@ class RegisterController:
         self.use_case = use_case
 
     def run(self, data: UserCreateDTO):
-        return self.use_case.execute(data.username, data.email, data.password)
+        username_final = data.username or data.email.split("@")[0]
+        
+        return self.use_case.execute(username_final, data.email, data.password)

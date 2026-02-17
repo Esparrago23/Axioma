@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr
-
+from typing import Optional
 class UserCreateDTO(BaseModel):
-    username: str
+    username: Optional[str] = None
     email: EmailStr
     password: str
 
@@ -15,3 +15,9 @@ class TokenResponseDTO(BaseModel):
     user_id: int       
     username: str      
     reputation: int
+    
+class UserResponseDTO(BaseModel):
+    id: int
+    username: str
+    email: str
+    reputation_score: int

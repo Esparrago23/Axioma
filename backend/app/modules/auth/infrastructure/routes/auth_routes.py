@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
-from app.modules.auth.infrastructure.dtos import UserCreateDTO, LoginDTO
+from app.modules.auth.infrastructure.dtos import UserCreateDTO, LoginDTO, UserResponseDTO
 from app.modules.auth.infrastructure.dependencies import get_register_controller, get_login_controller
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-@router.post("/register", status_code=201)
+@router.post("/register", status_code=201, response_model=UserResponseDTO)
 def register(
     data: UserCreateDTO,
     controller = Depends(get_register_controller)

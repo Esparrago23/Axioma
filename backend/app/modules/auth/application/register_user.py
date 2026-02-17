@@ -8,21 +8,17 @@ class RegisterUserUseCase:
         self.repository = repository
 
     def execute(self, username: str, email: str, password: str) -> User:
-        # 1. Validar unicidad
         if self.repository.get_by_email(email):
             raise HTTPException(status_code=400, detail="El email ya está registrado")
         if self.repository.get_by_username(username):
             raise HTTPException(status_code=400, detail="El usuario ya existe")
 
-        # 2. Hashear password
         hashed_pwd = get_password_hash(password)
 
-        # 3. Crear entidad
         new_user = User(
             username=username, 
             email=email, 
             hashed_password=hashed_pwd
         )
 
-        # 4. Guardar
         return self.repository.save(new_user)
