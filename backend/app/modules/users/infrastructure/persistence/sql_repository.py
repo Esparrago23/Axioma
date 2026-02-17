@@ -2,7 +2,7 @@ from typing import Optional
 from sqlmodel import Session
 from app.modules.users.domain.repository import UserRepository
 from app.modules.users.domain.entities import User
-from app.modules.users.infrastructure.persistence.models import UserModel
+from app.modules.auth.infrastructure.persistence.models import UserModel
 
 class SQLUserRepository(UserRepository):
     def __init__(self, session: Session):
