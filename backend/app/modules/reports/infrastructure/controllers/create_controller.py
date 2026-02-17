@@ -7,8 +7,11 @@ class CreateReportController:
 
     def run(self, dto: CreateReportDTO, user_id: int):
         return self.use_case.execute(
-            dto.title, dto.description, dto.latitude, dto.longitude, dto.category, user_id
+            title=dto.title,
+            desc=dto.description,
+            lat=dto.latitude,
+            long=dto.longitude,
+            cat=dto.category,
+            user_id=user_id,
+            photo_url=dto.photo_url
         )
-    
-
-    

@@ -5,4 +5,4 @@ class FeedController:
         self.use_case = use_case
 
     def run(self, lat: float, long: float):
-        return self.use_case.execute(lat=lat, lon=long)
+        return self.use_case.execute(lat=lat, long=long)

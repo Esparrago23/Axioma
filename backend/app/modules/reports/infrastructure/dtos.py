@@ -1,7 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
-
 from app.modules.reports.domain.entities import CategoryEnum, ReportStatus
 
 class CreateReportDTO(BaseModel):
@@ -30,4 +29,4 @@ class UpdateReportDTO(BaseModel):
     description: Optional[str] = None
 
 class VoteDTO(BaseModel):
-    vote_value: str  
+    vote_value: int

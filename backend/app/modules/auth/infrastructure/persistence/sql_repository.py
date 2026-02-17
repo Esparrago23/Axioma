@@ -24,3 +24,7 @@ class SQLUserRepository(UserRepository):
         statement = select(UserModel).where(UserModel.username == username)
         result = self.session.exec(statement).first()
         return User(**result.model_dump()) if result else None
+    
+    def get_by_id(self, id: int) -> Optional[User]:
+        user_db = self.session.get(UserModel, id)
+        return User(**user_db.model_dump()) if user_db else None

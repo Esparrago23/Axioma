@@ -12,4 +12,7 @@ class VoteReportUseCase:
         report.calculate_reputation(val)
         self.repo.save(report)
         self.repo.save_vote(Vote(user_id=uid, report_id=rid, vote_value=val))
-        return {"new_score": report.credibility_score}
+        return {
+            "new_score": report.credibility_score, 
+            "report_status": report.status 
+        }

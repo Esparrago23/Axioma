@@ -6,5 +6,5 @@ class VoteReportController:
         self.use_case = use_case
 
     def run(self, report_id: int, user_id: int, dto: VoteDTO):
-        is_upvote = dto.vote_value.upper() == "UP"
+        is_upvote = dto.vote_value > 0
         return self.use_case.execute(rid=report_id, uid=user_id, is_up=is_upvote)

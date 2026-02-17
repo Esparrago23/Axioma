@@ -39,6 +39,17 @@ class SQLReportRepository(ReportRepository):
             if self._haversine(lat, long, r.latitude, r.longitude) <= radius_km:
                 nearby.append(self._to_domain(r))
         return nearby
+    
+    def get_all(self, offset: int, limit: int) -> List[Report]:
+        statement = (
+            select(ReportModel)
+            .where(ReportModel.status == ReportStatus.ACTIVE.value)
+            .offset(offset)
+            .limit(limit)
+            .order_by(ReportModel.created_at.desc())
+        )
+        results = self.session.exec(statement).all()
+        return [self._to_domain(r) for r in results]
 
     def delete(self, report_id: int) -> bool:
         report_db = self.session.get(ReportModel, report_id)
@@ -61,8 +72,8 @@ class SQLReportRepository(ReportRepository):
         return Vote(**result.model_dump()) if result else None
 
     def _to_domain(self, model: ReportModel) -> Report:
-        return Report(**model.model_dump(), category=CategoryEnum(model.category), status=ReportStatus(model.status))
-
+        return Report(**model.model_dump(exclude={"category", "status"}), category=CategoryEnum(model.category), status=ReportStatus(model.status))
+    
     def _haversine(self, lat1, lon1, lat2, lon2):
         R = 6371  # km
         dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)

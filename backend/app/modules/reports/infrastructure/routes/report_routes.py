@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Response, status, Query
 from typing import List
 
-from app.modules.reports.infrastructure.dtos import CreateReportDTO, UpdateReportDTO, VoteDTO
+from app.modules.reports.infrastructure.dtos import CreateReportDTO, ReportResponseDTO, UpdateReportDTO, VoteDTO
 
 from app.modules.reports.infrastructure.dependencies import (
     get_create_controller,
@@ -9,13 +9,22 @@ from app.modules.reports.infrastructure.dependencies import (
     get_detail_controller,
     get_update_controller,
     get_delete_controller,
-    get_vote_controller
+    get_vote_controller,
+    get_all_controller
 )
 
 
 from app.modules.auth.infrastructure.dependencies import get_current_user
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
+
+@router.get("/all", response_model=List[ReportResponseDTO])
+def get_all_reports(
+    offset: int = 0,
+    limit: int = Query(default=50, le=100),
+    controller = Depends(get_all_controller)
+):
+    return controller.run(offset=offset, limit=limit)
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_report(
