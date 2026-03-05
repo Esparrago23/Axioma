@@ -1,4 +1,4 @@
-package com.patatus.axioma.core.network
+package com.patatus.axioma.features.auth.data.datasources.remote.api
 
 import com.patatus.axioma.features.auth.data.datasources.remote.models.LoginRequest
 import com.patatus.axioma.features.auth.data.datasources.remote.models.TokenResponse

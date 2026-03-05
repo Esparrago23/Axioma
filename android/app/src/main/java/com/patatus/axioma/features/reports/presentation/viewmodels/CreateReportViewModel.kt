@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.patatus.axioma.features.reports.domain.usecases.CreateReportUseCase
 import com.patatus.axioma.features.reports.presentation.screens.ReportUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class CreateReportViewModel(
+@HiltViewModel
+class CreateReportViewModel @Inject constructor(
     private val createReportUseCase: CreateReportUseCase
 ) : ViewModel() {
 

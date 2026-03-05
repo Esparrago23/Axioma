@@ -1,15 +1,45 @@
 package com.patatus.axioma.features.auth.di
 
-import com.patatus.axioma.core.di.AppContainer
-import com.patatus.axioma.features.auth.domain.usecases.LoginUseCase
-import com.patatus.axioma.features.auth.domain.usecases.RegisterUseCase
-import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModelFactory
-import com.patatus.axioma.features.auth.presentation.viewmodels.RegisterViewModelFactory
+import com.patatus.axioma.core.di.ApiRetrofit
+import com.patatus.axioma.features.auth.data.repositories.AuthRepositoryImpl
+import com.patatus.axioma.features.auth.domain.repositories.AuthRepository
+import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
+import dagger.Binds
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import retrofit2.Retrofit
+import javax.inject.Singleton
 
-class AuthModule(private val appContainer: AppContainer) {
 
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class AuthModuleBinds {
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        impl: AuthRepositoryImpl
+    ): AuthRepository
+}
 
-    private fun provideLoginUseCase(): LoginUseCase {
+@Module
+@InstallIn(SingletonComponent::class)
+object AuthModuleProvides {
+
+    @Provides
+    @Singleton
+    fun provideAuthApiService(
+        @ApiRetrofit retrofit: Retrofit
+    ): ReportsApiService {
+        return retrofit.create(ReportsApiService::class.java)
+    }
+}
+/*
+abstract class AuthModule {
+    @Binds
+    @Singleton
+    abstract fun provideLoginUseCase(): LoginUseCase {
         return LoginUseCase(appContainer.authRepository)
     }
 
@@ -26,3 +56,4 @@ class AuthModule(private val appContainer: AppContainer) {
         return RegisterViewModelFactory(provideRegisterUseCase())
     }
 }
+*/

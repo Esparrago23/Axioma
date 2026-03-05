@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.domain.usecases.GetReportsFeedUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed class FeedUiState {
     object Loading : FeedUiState()
@@ -14,7 +16,8 @@ sealed class FeedUiState {
     data class Error(val msg: String) : FeedUiState()
 }
 
-class FeedViewModel(
+@HiltViewModel
+class FeedViewModel @Inject constructor(
     private val getReportsFeedUseCase: GetReportsFeedUseCase
 ) : ViewModel() {
 

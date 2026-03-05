@@ -22,10 +22,10 @@ object AppNavigation {
     }
 
     @Composable
-    fun Graph(appContainer: AppContainer) {
+    fun Graph() {
         val navController = rememberNavController()
 
-        val screens = remember { AppScreens(appContainer) }
+        val screens = remember { AppScreens() }
 
         NavHost(
             navController = navController,

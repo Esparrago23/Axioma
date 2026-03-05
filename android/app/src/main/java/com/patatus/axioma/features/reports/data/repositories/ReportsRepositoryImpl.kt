@@ -1,19 +1,20 @@
 package com.patatus.axioma.features.reports.data.repositories
 
-import com.patatus.axioma.core.network.ReportsApiService
+import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toDomain
-import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
-import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
+import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import retrofit2.HttpException
 import org.json.JSONObject
+import retrofit2.HttpException
+import javax.inject.Inject
 
-class ReportsRepositoryImpl(
+class ReportsRepositoryImpl @Inject constructor(
     private val api: ReportsApiService
 ) : ReportsRepository {
 

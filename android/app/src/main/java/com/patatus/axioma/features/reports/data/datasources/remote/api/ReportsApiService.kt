@@ -1,4 +1,4 @@
-package com.patatus.axioma.core.network
+package com.patatus.axioma.features.reports.data.datasources.remote.api
 
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportResponse
@@ -10,9 +10,9 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
+import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
-import retrofit2.http.POST
 
 interface ReportsApiService {
     @POST("reports/")
