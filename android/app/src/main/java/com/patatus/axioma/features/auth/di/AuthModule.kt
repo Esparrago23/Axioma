@@ -1,9 +1,9 @@
 package com.patatus.axioma.features.auth.di
 
 import com.patatus.axioma.core.di.ApiRetrofit
+import com.patatus.axioma.features.auth.data.datasources.remote.api.AuthApiService
 import com.patatus.axioma.features.auth.data.repositories.AuthRepositoryImpl
 import com.patatus.axioma.features.auth.domain.repositories.AuthRepository
-import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -31,8 +31,8 @@ object AuthModuleProvides {
     @Singleton
     fun provideAuthApiService(
         @ApiRetrofit retrofit: Retrofit
-    ): ReportsApiService {
-        return retrofit.create(ReportsApiService::class.java)
+    ): AuthApiService {
+        return retrofit.create(AuthApiService::class.java)
     }
 }
 /*

@@ -1,6 +1,7 @@
 package com.patatus.axioma.features.reports.di
 
 import com.patatus.axioma.core.di.ApiRetrofit
+import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
 import com.patatus.axioma.features.reports.data.repositories.ReportsRepositoryImpl
 import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
 import dagger.Binds
@@ -28,7 +29,7 @@ object ReportsModuleProvides {
     @Singleton
     fun provideReportsApiService(
         @ApiRetrofit retrofit: Retrofit
-    ): ReportsRepository {
-        return retrofit.create(ReportsRepository::class.java)
+    ): ReportsApiService {
+        return retrofit.create(ReportsApiService::class.java)
     }
 }

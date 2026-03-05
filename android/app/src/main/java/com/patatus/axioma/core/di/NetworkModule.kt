@@ -42,6 +42,7 @@ object NetworkModule {
     }
     @Provides
     @Singleton
+    @ApiRetrofit
     fun provideApiRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
             .baseUrl(BuildConfig.BASE_URL_API)
