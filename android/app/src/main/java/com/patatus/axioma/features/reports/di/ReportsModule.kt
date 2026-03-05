@@ -1,55 +1,34 @@
 package com.patatus.axioma.features.reports.di
 
+import com.patatus.axioma.core.di.ApiRetrofit
+import com.patatus.axioma.features.reports.data.repositories.ReportsRepositoryImpl
 import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
-import com.patatus.axioma.features.reports.domain.usecases.CreateReportUseCase
-import com.patatus.axioma.features.reports.domain.usecases.DeleteReportUseCase
-import com.patatus.axioma.features.reports.domain.usecases.GetReportDetailUseCase
-import com.patatus.axioma.features.reports.domain.usecases.GetReportsFeedUseCase
-import com.patatus.axioma.features.reports.domain.usecases.UpdateReportUseCase
-import com.patatus.axioma.features.reports.domain.usecases.VoteReportUseCase
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import retrofit2.Retrofit
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object ReportsModule {
+abstract class ReportsModuleBinds {
+    @Binds
+    @Singleton
+    abstract fun bindReportsRepository(
+        impl: ReportsRepositoryImpl
+    ): ReportsRepository
+}
 
+@Module
+@InstallIn(SingletonComponent::class)
+object ReportsModuleProvides {
     @Provides
     @Singleton
-    fun provideCreateReportUseCase(repository: ReportsRepository): CreateReportUseCase {
-        return CreateReportUseCase(repository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideGetReportsFeedUseCase(repository: ReportsRepository): GetReportsFeedUseCase {
-        return GetReportsFeedUseCase(repository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideGetReportDetailUseCase(repository: ReportsRepository): GetReportDetailUseCase {
-        return GetReportDetailUseCase(repository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideVoteReportUseCase(repository: ReportsRepository): VoteReportUseCase {
-        return VoteReportUseCase(repository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideDeleteReportUseCase(repository: ReportsRepository): DeleteReportUseCase {
-        return DeleteReportUseCase(repository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideUpdateReportUseCase(repository: ReportsRepository): UpdateReportUseCase {
-        return UpdateReportUseCase(repository)
+    fun provideReportsApiService(
+        @ApiRetrofit retrofit: Retrofit
+    ): ReportsRepository {
+        return retrofit.create(ReportsRepository::class.java)
     }
 }

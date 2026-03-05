@@ -1,4 +1,4 @@
-package com.patatus.axioma.features.auth.data.datasources.remote.api
+package com.patatus.axioma.features.reports.data.datasources.remote.api
 
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportResponse

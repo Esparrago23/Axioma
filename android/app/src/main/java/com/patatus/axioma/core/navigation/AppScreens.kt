@@ -1,15 +1,11 @@
 package com.patatus.axioma.core.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.patatus.axioma.core.di.AppContainer
-import com.patatus.axioma.features.auth.di.AuthModule
 import com.patatus.axioma.features.auth.presentation.screens.LoginScreen
 import com.patatus.axioma.features.auth.presentation.screens.RegisterScreen
-import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModel
-import com.patatus.axioma.features.reports.di.ReportsModule
+import com.patatus.axioma.features.auth.presentation.viewmodels.AuthViewModel
 import com.patatus.axioma.features.reports.presentation.screens.CreateReportScreen
 import com.patatus.axioma.features.reports.presentation.screens.FeedScreen
 import com.patatus.axioma.features.reports.presentation.screens.ReportDetailScreen
@@ -20,27 +16,12 @@ import com.patatus.axioma.features.reports.presentation.viewmodels.ReportDetailV
 class AppScreens(
 
 ) {
-
-    @Composable
-    private fun rememberAuthModule() =
-        remember(appContainer) { AuthModule(appContainer) }
-
-    @Composable
-    private fun rememberReportsModule() =
-        remember(appContainer) { ReportsModule(appContainer) }
-
     /* ---------------- LOGIN ---------------- */
 
     @Composable
     fun Login(navController: NavController) {
 
-        val authModule = rememberAuthModule()
-
-        val viewModel: LoginViewModel = viewModel(
-            factory = remember(authModule) {
-                authModule.provideLoginViewModelFactory()
-            }
-        )
+        val viewModel: AuthViewModel = hiltViewModel()
 
         LoginScreen(
             viewModel = viewModel,
@@ -61,13 +42,7 @@ class AppScreens(
     @Composable
     fun Register(navController: NavController) {
 
-        val authModule = rememberAuthModule()
-
-        val viewModel: RegisterViewModel = viewModel(
-            factory = remember(authModule) {
-                authModule.provideRegisterViewModelFactory()
-            }
-        )
+        val viewModel: AuthViewModel = hiltViewModel()
 
         RegisterScreen(
             viewModel = viewModel,
@@ -88,13 +63,7 @@ class AppScreens(
     @Composable
     fun Feed(navController: NavController) {
 
-        val reportsModule = rememberReportsModule()
-
-        val viewModel: FeedViewModel = viewModel(
-            factory = remember(reportsModule) {
-                reportsModule.provideFeedViewModelFactory()
-            }
-        )
+        val viewModel: FeedViewModel = hiltViewModel()
 
         FeedScreen(
             viewModel = viewModel,
@@ -114,14 +83,7 @@ class AppScreens(
     @Composable
     fun CreateReport(navController: NavController) {
 
-        val reportsModule = rememberReportsModule()
-
-        val viewModel: CreateReportViewModel = viewModel(
-            factory = remember(reportsModule) {
-                reportsModule.provideCreateReportViewModelFactory()
-            }
-        )
-
+        val viewModel: CreateReportViewModel = hiltViewModel()
         CreateReportScreen(
             viewModel = viewModel,
             onBack = { navController.popBackStack() }
@@ -135,15 +97,7 @@ class AppScreens(
         navController: NavController,
         reportId: Int
     ) {
-
-        val reportsModule = rememberReportsModule()
-
-        val viewModel: ReportDetailViewModel = viewModel(
-            factory = remember(reportsModule) {
-                reportsModule.provideReportDetailViewModelFactory()
-            }
-        )
-
+        val viewModel: ReportDetailViewModel = hiltViewModel()
         ReportDetailScreen(
             reportId = reportId,
             viewModel = viewModel,

@@ -1,6 +1,6 @@
 package com.patatus.axioma.features.reports.data.repositories
 
-import com.patatus.axioma.features.auth.data.datasources.remote.api.ReportsApiService
+import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
