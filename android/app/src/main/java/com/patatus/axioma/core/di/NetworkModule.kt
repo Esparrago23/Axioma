@@ -3,6 +3,8 @@ package com.patatus.axioma.core.di
 import com.patatus.axioma.BuildConfig
 import com.patatus.axioma.core.config.AppConfig
 import com.patatus.axioma.core.network.TokenManager
+import com.patatus.axioma.features.auth.data.datasources.remote.api.AuthApiService
+import com.patatus.axioma.features.auth.data.datasources.remote.api.ReportsApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -48,6 +50,17 @@ object NetworkModule {
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    }
+    @Provides
+    @Singleton
+    fun provideAuthApiService(retrofit: Retrofit): AuthApiService {
+        return retrofit.create(AuthApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideReportsApiService(retrofit: Retrofit): ReportsApiService {
+        return retrofit.create(ReportsApiService::class.java)
     }
 }
 /*

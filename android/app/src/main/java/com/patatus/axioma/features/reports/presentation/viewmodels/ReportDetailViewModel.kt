@@ -7,9 +7,11 @@ import com.patatus.axioma.features.reports.domain.usecases.DeleteReportUseCase
 import com.patatus.axioma.features.reports.domain.usecases.GetReportDetailUseCase
 import com.patatus.axioma.features.reports.domain.usecases.UpdateReportUseCase
 import com.patatus.axioma.features.reports.domain.usecases.VoteReportUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed class DetailUiState {
     object Loading : DetailUiState()
@@ -17,8 +19,8 @@ sealed class DetailUiState {
     data class Error(val msg: String) : DetailUiState()
     object Deleted : DetailUiState()
 }
-
-class ReportDetailViewModel(
+@HiltViewModel
+class ReportDetailViewModel @Inject constructor(
     private val getReportDetailUseCase: GetReportDetailUseCase,
     private val voteReportUseCase: VoteReportUseCase,
     private val deleteReportUseCase: DeleteReportUseCase,

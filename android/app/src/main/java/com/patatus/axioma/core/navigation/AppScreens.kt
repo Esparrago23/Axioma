@@ -18,7 +18,7 @@ import com.patatus.axioma.features.reports.presentation.viewmodels.FeedViewModel
 import com.patatus.axioma.features.reports.presentation.viewmodels.ReportDetailViewModel
 
 class AppScreens(
-    private val appContainer: AppContainer
+
 ) {
 
     @Composable
