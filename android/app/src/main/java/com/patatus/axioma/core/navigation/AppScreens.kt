@@ -9,7 +9,6 @@ import com.patatus.axioma.features.auth.di.AuthModule
 import com.patatus.axioma.features.auth.presentation.screens.LoginScreen
 import com.patatus.axioma.features.auth.presentation.screens.RegisterScreen
 import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModel
-import com.patatus.axioma.features.auth.presentation.viewmodels.RegisterViewModel
 import com.patatus.axioma.features.reports.di.ReportsModule
 import com.patatus.axioma.features.reports.presentation.screens.CreateReportScreen
 import com.patatus.axioma.features.reports.presentation.screens.FeedScreen
