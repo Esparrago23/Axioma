@@ -12,7 +12,15 @@ class ReportRepository(ABC):
         pass
 
     @abstractmethod
-    def get_nearby(self, lat: float, long: float, radius_km: float) -> List[Report]:
+    def get_nearby(
+        self,
+        lat: float,
+        long: float,
+        radius_km: float,
+        sort: str,
+        offset: int,
+        limit: int
+    ) -> List[Report]:
         pass
     @abstractmethod
     def get_all(self, offset: int, limit: int) -> List[Report]: 

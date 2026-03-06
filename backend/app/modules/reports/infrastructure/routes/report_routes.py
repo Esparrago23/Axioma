@@ -36,11 +36,22 @@ def create_report(
 
 @router.get("/")
 def get_feed(
-    lat: float, 
+    lat: float,
     long: float,
+    radius_km: float = Query(default=15.0, ge=1.0, le=50.0),
+    sort: str = Query(default="recent", pattern="^(recent|relevant)$"),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     controller = Depends(get_feed_controller)
 ):
-    return controller.run(lat=lat, long=long)
+    return controller.run(
+        lat=lat,
+        long=long,
+        radius_km=radius_km,
+        sort=sort,
+        offset=offset,
+        limit=limit
+    )
 
 @router.get("/{id}")
 def get_report_detail(

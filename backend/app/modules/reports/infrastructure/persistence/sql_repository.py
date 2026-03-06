@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from math import radians, cos, sin, asin, sqrt
 from typing import List, Optional
 from sqlmodel import Session, select
@@ -30,7 +31,15 @@ class SQLReportRepository(ReportRepository):
         report_db = self.session.get(ReportModel, id)
         return self._to_domain(report_db) if report_db else None
 
-    def get_nearby(self, lat: float, long: float, radius_km: float) -> List[Report]:
+    def get_nearby(
+        self,
+        lat: float,
+        long: float,
+        radius_km: float,
+        sort: str,
+        offset: int,
+        limit: int
+    ) -> List[Report]:
         statement = select(ReportModel).where(ReportModel.status == ReportStatus.ACTIVE.value)
         results = self.session.exec(statement).all()
         
@@ -38,7 +47,15 @@ class SQLReportRepository(ReportRepository):
         for r in results:
             if self._haversine(lat, long, r.latitude, r.longitude) <= radius_km:
                 nearby.append(self._to_domain(r))
-        return nearby
+
+        if sort == "relevant":
+            cutoff = datetime.utcnow() - timedelta(hours=48)
+            nearby = [r for r in nearby if r.created_at >= cutoff]
+            nearby.sort(key=lambda r: (-r.credibility_score, -r.created_at.timestamp()))
+        else:
+            nearby.sort(key=lambda r: r.created_at, reverse=True)
+
+        return nearby[offset : offset + limit]
     
     def get_all(self, offset: int, limit: int) -> List[Report]:
         statement = (
