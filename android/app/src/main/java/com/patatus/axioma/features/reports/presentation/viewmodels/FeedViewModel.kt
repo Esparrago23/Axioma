@@ -2,46 +2,19 @@ package com.patatus.axioma.features.reports.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.domain.usecases.GetReportsFeedUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
-
-sealed class FeedUiState {
-    object Loading : FeedUiState()
-    data class Success(val reports: List<Report>) : FeedUiState()
-    data class Error(val msg: String) : FeedUiState()
-}
 
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     private val getReportsFeedUseCase: GetReportsFeedUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<FeedUiState>(FeedUiState.Loading)
-    val uiState = _uiState.asStateFlow()
-
-    init {
-        loadReports()
-    }
-
-    fun loadReports() {
-        viewModelScope.launch {
-            _uiState.value = FeedUiState.Loading
-            getReportsFeedUseCase(offset = 0)
-                .onSuccess { reports ->
-                    _uiState.value = FeedUiState.Success(reports)
-                }
-                .onFailure { error ->
-                    _uiState.value = FeedUiState.Error(error.message ?: "Error al cargar el feed")
-                }
-        }
-    }
-
-    fun refresh() {
-        loadReports()
-    }
+    val reportsFeed: Flow<PagingData<Report>> = getReportsFeedUseCase()
+        .cachedIn(viewModelScope)
 }

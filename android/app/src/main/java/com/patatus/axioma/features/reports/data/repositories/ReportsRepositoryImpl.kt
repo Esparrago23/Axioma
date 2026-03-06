@@ -1,6 +1,13 @@
 package com.patatus.axioma.features.reports.data.repositories
 
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
+import com.patatus.axioma.core.database.AxiomaDatabase
 import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
+import com.patatus.axioma.features.reports.data.datasources.remote.mediator.ReportRemoteMediator
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
@@ -9,13 +16,16 @@ import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRe
 import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import retrofit2.HttpException
 import javax.inject.Inject
 
 class ReportsRepositoryImpl @Inject constructor(
-    private val api: ReportsApiService
+    private val api: ReportsApiService,
+    private val database: AxiomaDatabase
 ) : ReportsRepository {
 
     override suspend fun createReport(title: String, desc: String, lat: Double, long: Double, category: String): Result<Report> {
@@ -45,9 +55,20 @@ class ReportsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getReportsFeed(offset: Int): Result<List<Report>> {
-        return safeApiCall {
-            api.getAllReports(offset).map { it.toDomain() }
+    @OptIn(ExperimentalPagingApi::class)
+    override fun getReportsFeed(): Flow<PagingData<Report>> {
+        val pagingSourceFactory = { database.reportDao().pagingSource() }
+
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false,
+                prefetchDistance = 5
+            ),
+            remoteMediator = ReportRemoteMediator(api, database),
+            pagingSourceFactory = pagingSourceFactory
+        ).flow.map { pagingData ->
+            pagingData.map { entity -> entity.toDomain() }
         }
     }
 

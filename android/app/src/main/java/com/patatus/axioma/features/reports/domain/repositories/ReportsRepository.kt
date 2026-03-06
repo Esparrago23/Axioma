@@ -1,6 +1,9 @@
 package com.patatus.axioma.features.reports.domain.repositories
-import com.patatus.axioma.features.reports.domain.entities.Report
+
+import androidx.paging.PagingData
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
+import com.patatus.axioma.features.reports.domain.entities.Report
+import kotlinx.coroutines.flow.Flow
 
 interface ReportsRepository {
     suspend fun createReport(
@@ -11,7 +14,7 @@ interface ReportsRepository {
         category: String
     ): Result<Report>
 
-    suspend fun getReportsFeed(offset: Int): Result<List<Report>>
+    fun getReportsFeed(): Flow<PagingData<Report>>
     suspend fun getReportsMap(lat: Double, long: Double): Result<List<Report>>
     suspend fun getReportDetail(id: Int): Result<Report>
 
