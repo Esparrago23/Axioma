@@ -25,7 +25,6 @@ class FeedViewModel @Inject constructor(
     val feedQuery = _feedQuery.asStateFlow()
 
     val reportsFeed: Flow<PagingData<Report>> = _feedQuery
-        .distinctUntilChanged()
         .flatMapLatest { query -> getReportsFeedUseCase(query) }
         .cachedIn(viewModelScope)
 
