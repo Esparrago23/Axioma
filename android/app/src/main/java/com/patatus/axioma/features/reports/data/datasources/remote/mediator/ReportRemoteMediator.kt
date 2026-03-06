@@ -10,13 +10,16 @@ import com.patatus.axioma.features.reports.data.datasources.local.db.entities.Re
 import com.patatus.axioma.features.reports.data.datasources.local.db.entities.ReportRemoteKeysEntity
 import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toEntity
+import com.patatus.axioma.features.reports.domain.entities.FeedQuery
+import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import retrofit2.HttpException
 import java.io.IOException
 
 @OptIn(ExperimentalPagingApi::class)
 class ReportRemoteMediator(
 	private val apiService: ReportsApiService,
-	private val database: AxiomaDatabase
+	private val database: AxiomaDatabase,
+	private val query: FeedQuery
 ) : RemoteMediator<Int, ReportEntity>() {
 
 	private val reportDao = database.reportDao()
@@ -38,7 +41,7 @@ class ReportRemoteMediator(
 				}
 			}
 
-			val reportsDto = apiService.getAllReports(
+			val reportsDto = fetchReports(
 				offset = offset,
 				limit = state.config.pageSize
 			)
@@ -79,6 +82,33 @@ class ReportRemoteMediator(
 			?.data
 			?.lastOrNull()
 			?.let { report -> remoteKeysDao.remoteKeysReportId(report.id) }
+	}
+
+	private suspend fun fetchReports(offset: Int, limit: Int) =
+		if (query.latitude != null && query.longitude != null) {
+			val response = apiService.getReportsNearby(
+				latitude = query.latitude,
+				longitude = query.longitude,
+				radiusKm = query.radiusKm,
+				sort = query.sort.toApiSort(),
+				limit = limit,
+				offset = offset
+			)
+
+			if (!response.isSuccessful) {
+				throw HttpException(response)
+			}
+
+			response.body().orEmpty()
+		} else {
+			apiService.getAllReports(offset = offset, limit = limit)
+		}
+
+	private fun FeedSort.toApiSort(): String {
+		return when (this) {
+			FeedSort.RELEVANT -> "relevant"
+			FeedSort.RECENT -> "recent"
+		}
 	}
 }
 

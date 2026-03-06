@@ -13,6 +13,8 @@ import com.patatus.axioma.features.reports.data.datasources.remote.models.Report
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
+import com.patatus.axioma.features.reports.domain.entities.FeedQuery
+import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +23,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import retrofit2.HttpException
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 class ReportsRepositoryImpl @Inject constructor(
@@ -56,8 +60,15 @@ class ReportsRepositoryImpl @Inject constructor(
     }
 
     @OptIn(ExperimentalPagingApi::class)
-    override fun getReportsFeed(): Flow<PagingData<Report>> {
-        val pagingSourceFactory = { database.reportDao().pagingSource() }
+    override fun getReportsFeed(query: FeedQuery): Flow<PagingData<Report>> {
+        val pagingSourceFactory = {
+            when (query.sort) {
+                FeedSort.RELEVANT -> database.reportDao().pagingSourceRelevant(
+                    sinceIso = Instant.now().minus(48, ChronoUnit.HOURS).toString()
+                )
+                FeedSort.RECENT -> database.reportDao().pagingSourceRecent()
+            }
+        }
 
         return Pager(
             config = PagingConfig(
@@ -65,7 +76,11 @@ class ReportsRepositoryImpl @Inject constructor(
                 enablePlaceholders = false,
                 prefetchDistance = 5
             ),
-            remoteMediator = ReportRemoteMediator(api, database),
+            remoteMediator = ReportRemoteMediator(
+                apiService = api,
+                database = database,
+                query = query
+            ),
             pagingSourceFactory = pagingSourceFactory
         ).flow.map { pagingData ->
             pagingData.map { entity -> entity.toDomain() }

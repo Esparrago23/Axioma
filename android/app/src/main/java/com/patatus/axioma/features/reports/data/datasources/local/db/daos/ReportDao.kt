@@ -13,7 +13,10 @@ interface ReportDao {
     suspend fun insertAll(reports: List<ReportEntity>)
 
     @Query("SELECT * FROM reports ORDER BY created_at DESC")
-    fun pagingSource(): PagingSource<Int, ReportEntity>
+    fun pagingSourceRecent(): PagingSource<Int, ReportEntity>
+
+    @Query("SELECT * FROM reports WHERE created_at >= :sinceIso ORDER BY credibility_score DESC, created_at DESC")
+    fun pagingSourceRelevant(sinceIso: String): PagingSource<Int, ReportEntity>
 
     @Query("DELETE FROM reports")
     suspend fun clearAll()
