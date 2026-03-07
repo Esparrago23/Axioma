@@ -1,5 +1,7 @@
 package com.patatus.axioma.features.users.presentation.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,29 +12,34 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AlternateEmail
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -56,12 +63,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.patatus.axioma.core.hardware.camera.rememberCameraCaptureLauncher
+import com.patatus.axioma.core.hardware.camera.rememberCameraPermissionRequester
 import com.patatus.axioma.features.users.presentation.viewmodels.ProfileViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
@@ -73,12 +82,30 @@ fun ProfileScreen(
     var editMode by rememberSaveable { mutableStateOf(ProfileEditMode.NONE.name) }
     val isDataEditing = editMode == ProfileEditMode.DATA.name
     val isPhotoEditing = editMode == ProfileEditMode.PHOTO.name
+
+    var showPhotoSourceSheet by rememberSaveable { mutableStateOf(false) }
+    var showCameraRationaleDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingCameraLaunch by rememberSaveable { mutableStateOf(false) }
+
     val brandColor = Color(0xFF64B6AB)
+
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
             viewModel.onProfilePictureUrlChanged(uri.toString())
+        }
+    }
+
+    val cameraPermission = rememberCameraPermissionRequester()
+    val cameraLauncher = rememberCameraCaptureLauncher { photoUri ->
+        viewModel.onProfilePictureUrlChanged(photoUri.toString())
+    }
+
+    LaunchedEffect(cameraPermission.hasPermission, pendingCameraLaunch) {
+        if (cameraPermission.hasPermission && pendingCameraLaunch) {
+            pendingCameraLaunch = false
+            cameraLauncher.launch()
         }
     }
 
@@ -94,6 +121,84 @@ fun ProfileScreen(
         if (state.deletedAccount) {
             onAccountDeleted()
         }
+    }
+
+    if (showPhotoSourceSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showPhotoSourceSheet = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "Foto del perfil",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                HorizontalDivider()
+
+                PhotoSourceItem(
+                    icon = Icons.Outlined.CameraAlt,
+                    title = "Camara",
+                    onClick = {
+                        showPhotoSourceSheet = false
+                        editMode = ProfileEditMode.PHOTO.name
+                        if (cameraPermission.hasPermission) {
+                            cameraLauncher.launch()
+                        } else {
+                            pendingCameraLaunch = true
+                            if (cameraPermission.shouldShowRationale) {
+                                showCameraRationaleDialog = true
+                            } else {
+                                cameraPermission.requestPermission()
+                            }
+                        }
+                    }
+                )
+
+                PhotoSourceItem(
+                    icon = Icons.Outlined.Image,
+                    title = "Galeria",
+                    onClick = {
+                        showPhotoSourceSheet = false
+                        editMode = ProfileEditMode.PHOTO.name
+                        pickImageLauncher.launch("image/*")
+                    }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+    }
+
+    if (showCameraRationaleDialog) {
+        AlertDialog(
+            onDismissRequest = { showCameraRationaleDialog = false },
+            title = { Text("Permiso de camara") },
+            text = { Text("Necesitamos acceso a la camara para tomar la foto de perfil.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCameraRationaleDialog = false
+                        cameraPermission.requestPermission()
+                    }
+                ) {
+                    Text("Continuar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingCameraLaunch = false
+                        showCameraRationaleDialog = false
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackState) }) { padding ->
@@ -155,7 +260,7 @@ fun ProfileScreen(
                 fontSize = 34.sp,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .clickable { editMode = ProfileEditMode.PHOTO.name }
+                    .clickable { showPhotoSourceSheet = true }
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -241,23 +346,9 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Cambiar foto de perfil",
+                    text = "Foto lista para guardar",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
-                )
-
-                Button(
-                    onClick = { pickImageLauncher.launch("image/*") },
-                    enabled = !state.isSaving && !state.isDeleting,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Subir archivo")
-                }
-
-                Text(
-                    text = "Archivo seleccionado: ${state.profilePictureUrlInput.takeIf { it.isNotBlank() } ?: "Ninguno"}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF4A4A4A)
                 )
 
                 Row(
@@ -292,6 +383,33 @@ fun ProfileScreen(
                 Text(if (state.isDeleting) "Eliminando..." else "Eliminar cuenta")
             }
         }
+    }
+}
+
+@Composable
+private fun PhotoSourceItem(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 6.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(26.dp)
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium
+        )
     }
 }
 
