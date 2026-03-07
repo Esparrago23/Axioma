@@ -11,5 +11,7 @@ interface UsersRepository {
         profilePictureUrl: String?
     ): Result<User>
 
+    suspend fun uploadMyProfilePhoto(localUri: String): Result<User>
+
     suspend fun deleteMyAccount(): Result<Boolean>
 }

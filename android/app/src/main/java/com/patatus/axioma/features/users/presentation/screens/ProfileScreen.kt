@@ -324,7 +324,7 @@ fun ProfileScreen(
                 ) {
                     Button(
                         onClick = {
-                            viewModel.saveProfileChanges()
+                            viewModel.saveProfileDataChanges()
                             editMode = ProfileEditMode.NONE.name
                         },
                         enabled = !state.isSaving && !state.isDeleting,
@@ -357,7 +357,7 @@ fun ProfileScreen(
                 ) {
                     Button(
                         onClick = {
-                            viewModel.saveProfileChanges()
+                            viewModel.saveProfilePhotoChanges()
                             editMode = ProfileEditMode.NONE.name
                         },
                         enabled = !state.isSaving && !state.isDeleting,

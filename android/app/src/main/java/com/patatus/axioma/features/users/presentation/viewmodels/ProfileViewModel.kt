@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.patatus.axioma.core.network.TokenManager
 import com.patatus.axioma.features.users.domain.usecases.DeleteUserAccountUseCase
 import com.patatus.axioma.features.users.domain.usecases.GetUserProfileUseCase
+import com.patatus.axioma.features.users.domain.usecases.UploadUserProfilePhotoUseCase
 import com.patatus.axioma.features.users.domain.usecases.UpdateUserProfileUseCase
 import com.patatus.axioma.features.users.presentation.screens.ProfileUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +20,7 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val updateUserProfileUseCase: UpdateUserProfileUseCase,
+    private val uploadUserProfilePhotoUseCase: UploadUserProfilePhotoUseCase,
     private val deleteUserAccountUseCase: DeleteUserAccountUseCase
 ) : ViewModel() {
 
@@ -66,7 +68,7 @@ class ProfileViewModel @Inject constructor(
         _state.update { it.copy(profilePictureUrlInput = value) }
     }
 
-    fun saveProfileChanges() {
+    fun saveProfileDataChanges() {
         val current = _state.value
         if (current.usernameInput.isBlank()) {
             _state.update { it.copy(errorMessage = "El username no puede estar vacio") }
@@ -95,6 +97,47 @@ class ProfileViewModel @Inject constructor(
                     it.copy(
                         isSaving = false,
                         errorMessage = error.message ?: "No se pudo actualizar el perfil"
+                    )
+                }
+            }
+        }
+    }
+
+    fun saveProfilePhotoChanges() {
+        val current = _state.value
+        val localUri = current.profilePictureUrlInput.trim()
+
+        if (localUri.isBlank()) {
+            _state.update { it.copy(errorMessage = "Selecciona una foto antes de guardar") }
+            return
+        }
+
+        viewModelScope.launch {
+            _state.update { it.copy(isSaving = true, errorMessage = null, successMessage = null) }
+
+            val result = if (localUri.startsWith("content://") || localUri.startsWith("file://")) {
+                uploadUserProfilePhotoUseCase(localUri)
+            } else {
+                updateUserProfileUseCase(
+                    username = null,
+                    fullName = null,
+                    profilePictureUrl = localUri
+                )
+            }
+
+            result.onSuccess { updatedUser ->
+                _state.value = _state.value.copy(
+                    isSaving = false,
+                    user = updatedUser,
+                    profilePictureUrlInput = updatedUser.profilePicture.orEmpty(),
+                    successMessage = "Foto actualizada",
+                    errorMessage = null
+                )
+            }.onFailure { error ->
+                _state.update {
+                    it.copy(
+                        isSaving = false,
+                        errorMessage = error.message ?: "No se pudo actualizar la foto"
                     )
                 }
             }
