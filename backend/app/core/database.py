@@ -35,3 +35,13 @@ def init_db():
                 """
             )
         )
+        conn.execute(
+            text(
+                """
+                UPDATE users
+                SET profile_picture_url = replace(profile_picture_url, 'http://localhost:9000/', :public_endpoint)
+                WHERE profile_picture_url LIKE 'http://localhost:9000/%';
+                """
+            ),
+            {"public_endpoint": f"{settings.AWS_PUBLIC_ENDPOINT_URL.rstrip('/')}/"},
+        )

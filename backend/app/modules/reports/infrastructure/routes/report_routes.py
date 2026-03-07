@@ -1,10 +1,10 @@
-from pathlib import Path
 from uuid import uuid4
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from typing import List
-import shutil
 
 from app.modules.reports.infrastructure.dtos import CreateReportDTO, ReportPhotoUploadResponseDTO, ReportResponseDTO, UpdateReportDTO, VoteDTO
+from app.core.storage.dependencies import get_storage_repository
+from app.core.storage.repository import StorageRepository
 
 from app.modules.reports.infrastructure.dependencies import (
     get_create_controller,
@@ -20,8 +20,6 @@ from app.modules.reports.infrastructure.dependencies import (
 from app.modules.auth.infrastructure.dependencies import get_current_user
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
-APP_DIR = Path(__file__).resolve().parents[4]
-REPORT_PICTURES_DIR = APP_DIR / "static" / "report_pictures"
 
 @router.get("/all", response_model=List[ReportResponseDTO])
 def get_all_reports(
@@ -41,28 +39,28 @@ def create_report(
 
 @router.post("/photo", response_model=ReportPhotoUploadResponseDTO)
 def upload_report_photo(
-    request: Request,
     photo: UploadFile = File(...),
+    storage_repo: StorageRepository = Depends(get_storage_repository),
     user = Depends(get_current_user)
 ):
     if not photo.content_type or not photo.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="El archivo debe ser una imagen")
 
-    REPORT_PICTURES_DIR.mkdir(parents=True, exist_ok=True)
-    extension = Path(photo.filename or "report.jpg").suffix or ".jpg"
-    filename = f"{user.id}_{uuid4().hex}{extension}"
-    file_path = REPORT_PICTURES_DIR / filename
+    filename = photo.filename or "report.jpg"
+    extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    object_name = f"report_pictures/{user.id}_{uuid4().hex}.{extension}"
 
     try:
-        with file_path.open("wb") as buffer:
-            shutil.copyfileobj(photo.file, buffer)
-    except OSError:
-        raise HTTPException(status_code=500, detail="No se pudo guardar la imagen")
+        public_url = storage_repo.upload_file(
+            file_obj=photo.file,
+            object_name=object_name,
+            content_type=photo.content_type,
+        )
+    except RuntimeError:
+        raise HTTPException(status_code=500, detail="No se pudo subir la imagen")
     finally:
         photo.file.close()
 
-    base_url = str(request.base_url).rstrip("/")
-    public_url = f"{base_url}/static/report_pictures/{filename}"
     return ReportPhotoUploadResponseDTO(photo_url=public_url)
 
 @router.get("/")
