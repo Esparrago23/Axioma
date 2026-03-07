@@ -1,22 +1,32 @@
 package com.patatus.axioma.features.reports.data.datasources.remote.api
 
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
+import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportPhotoUploadResponse
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportResponse
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ReportsApiService {
     @POST("reports/")
     suspend fun createReport(@Body report: ReportCreateRequest): ReportResponse
+
+    @Multipart
+    @POST("reports/photo")
+    suspend fun uploadReportPhoto(
+        @Part photo: MultipartBody.Part
+    ): ReportPhotoUploadResponse
 
     @GET("reports/all")
     suspend fun getAllReports(

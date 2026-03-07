@@ -6,4 +6,9 @@ class UpdateUserController:
         self.use_case = use_case
 
     def run(self, user_id: int, dto: UserUpdateDTO):
-        return self.use_case.execute(user_id, dto.username)
+        return self.use_case.execute(
+            user_id=user_id,
+            username=dto.username,
+            full_name=dto.full_name,
+            profile_picture_url=dto.profile_picture_url
+        )

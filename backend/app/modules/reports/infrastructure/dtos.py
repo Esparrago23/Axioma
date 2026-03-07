@@ -30,3 +30,6 @@ class UpdateReportDTO(BaseModel):
 
 class VoteDTO(BaseModel):
     vote_value: int
+
+class ReportPhotoUploadResponseDTO(BaseModel):
+    photo_url: str

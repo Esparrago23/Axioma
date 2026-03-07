@@ -10,4 +10,6 @@ class UserModel(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     hashed_password: str
     reputation_score: int = Field(default=10)
+    profile_picture_url: Optional[str] = Field(default=None)
+    full_name: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)

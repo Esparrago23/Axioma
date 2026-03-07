@@ -1,15 +1,22 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from sqlmodel import SQLModel
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
 
-from app.core.database import engine
+from app.core.database import init_db
 from app.modules.auth.infrastructure.routes.auth_routes import router as auth_router
 from app.modules.users.infrastructure.routes.user_routes import router as users_router
 from app.modules.reports.infrastructure.routes.report_routes import router as reports_router
 
+APP_DIR = Path(__file__).resolve().parent
+STATIC_DIR = APP_DIR / "static"
+PROFILE_PICTURES_DIR = STATIC_DIR / "profile_pictures"
+PROFILE_PICTURES_DIR.mkdir(parents=True, exist_ok=True)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    SQLModel.metadata.create_all(engine)
+    PROFILE_PICTURES_DIR.mkdir(parents=True, exist_ok=True)
+    init_db()
     yield
 
 app = FastAPI(
@@ -23,6 +30,7 @@ app = FastAPI(
 app.include_router(auth_router)    
 app.include_router(users_router)  
 app.include_router(reports_router) 
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 @app.get("/")
 def read_root():

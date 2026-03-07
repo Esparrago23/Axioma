@@ -12,8 +12,11 @@ interface ReportsRepository {
         desc: String,
         lat: Double,
         long: Double,
-        category: String
+        category: String,
+        photoUrl: String? = null
     ): Result<Report>
+
+    suspend fun uploadReportPhoto(localUri: String): Result<String>
 
     fun getReportsFeed(query: FeedQuery): Flow<PagingData<Report>>
     suspend fun getReportsMap(lat: Double, long: Double): Result<List<Report>>

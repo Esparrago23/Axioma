@@ -12,6 +12,8 @@ import com.patatus.axioma.features.reports.presentation.screens.ReportDetailScre
 import com.patatus.axioma.features.reports.presentation.viewmodels.CreateReportViewModel
 import com.patatus.axioma.features.reports.presentation.viewmodels.FeedViewModel
 import com.patatus.axioma.features.reports.presentation.viewmodels.ReportDetailViewModel
+import com.patatus.axioma.features.users.presentation.screens.ProfileScreen
+import com.patatus.axioma.features.users.presentation.viewmodels.ProfileViewModel
 
 class AppScreens(
 
@@ -70,6 +72,9 @@ class AppScreens(
             onNavigateToCreate = {
                 navController.navigate(AppNavigation.Routes.CREATE_REPORT)
             },
+            onNavigateToProfile = {
+                navController.navigate(AppNavigation.Routes.PROFILE)
+            },
             onNavigateToDetail = { reportId ->
                 navController.navigate(
                     AppNavigation.Routes.reportDetail(reportId)
@@ -102,6 +107,21 @@ class AppScreens(
             reportId = reportId,
             viewModel = viewModel,
             onBack = { navController.popBackStack() }
+        )
+    }
+
+    @Composable
+    fun Profile(navController: NavController) {
+        val viewModel: ProfileViewModel = hiltViewModel()
+        ProfileScreen(
+            viewModel = viewModel,
+            onBack = { navController.popBackStack() },
+            onAccountDeleted = {
+                navController.navigate(AppNavigation.Routes.LOGIN) {
+                    popUpTo(0)
+                    launchSingleTop = true
+                }
+            }
         )
     }
 }
