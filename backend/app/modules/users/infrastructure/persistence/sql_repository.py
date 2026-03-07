@@ -1,5 +1,5 @@
 from typing import Optional
-from sqlmodel import Session
+from sqlmodel import Session, select
 from app.modules.users.domain.repository import UserRepository
 from app.modules.users.domain.entities import User
 from app.modules.auth.infrastructure.persistence.models import UserModel
@@ -12,13 +12,17 @@ class SQLUserRepository(UserRepository):
         user_db = self.session.get(UserModel, id)
         return self._to_domain(user_db) if user_db else None
 
+    def get_by_username(self, username: str) -> Optional[User]:
+        statement = select(UserModel).where(UserModel.username == username)
+        user_db = self.session.exec(statement).first()
+        return self._to_domain(user_db) if user_db else None
+
     def update(self, user: User) -> User:
         user_db = self.session.get(UserModel, user.id)
         if user_db:
-            # Actualizamos campos
             user_db.username = user.username
-            user_db.reputation_score = user.reputation_score
-            # Nota: No actualizamos password aquí (eso iría en otro método específico si quisieras)
+            user_db.full_name = user.full_name
+            user_db.profile_picture_url = user.profile_picture_url
             
             self.session.add(user_db)
             self.session.commit()

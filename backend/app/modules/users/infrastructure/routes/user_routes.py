@@ -20,6 +20,8 @@ def get_my_profile(
         username=current_user.username,
         email=current_user.email,
         reputation_score=current_user.reputation_score,
+        full_name=current_user.full_name,
+        profile_picture_url=current_user.profile_picture_url,
         created_at=current_user.created_at
     )
 

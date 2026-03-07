@@ -1,15 +1,14 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from sqlmodel import SQLModel
 
-from app.core.database import engine
+from app.core.database import init_db
 from app.modules.auth.infrastructure.routes.auth_routes import router as auth_router
 from app.modules.users.infrastructure.routes.user_routes import router as users_router
 from app.modules.reports.infrastructure.routes.report_routes import router as reports_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    SQLModel.metadata.create_all(engine)
+    init_db()
     yield
 
 app = FastAPI(
