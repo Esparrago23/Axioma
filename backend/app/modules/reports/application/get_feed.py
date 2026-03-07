@@ -6,6 +6,20 @@ class GetFeedUseCase:
     def __init__(self, repository: ReportRepository):
         self.repository = repository
 
-    def execute(self, lat: float, long: float) -> List[Report]:
-        # Radio fijo de 10km por regla de negocio
-        return self.repository.get_nearby(lat, long, radius_km=10.0)
+    def execute(
+        self,
+        lat: float,
+        long: float,
+        radius_km: float = 15.0,
+        sort: str = "recent",
+        offset: int = 0,
+        limit: int = 50
+    ) -> List[Report]:
+        return self.repository.get_nearby(
+            lat=lat,
+            long=long,
+            radius_km=radius_km,
+            sort=sort,
+            offset=offset,
+            limit=limit
+        )

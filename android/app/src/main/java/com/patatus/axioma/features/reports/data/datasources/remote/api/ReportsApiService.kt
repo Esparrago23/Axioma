@@ -25,11 +25,14 @@ interface ReportsApiService {
     ): List<ReportResponse>
 
     @GET("reports/")
-    suspend fun getReportsByLocation(
-        @Query("lat") lat: Double,
-        @Query("long") long: Double,
-        @Query("radius_meters") radius: Double = 2000.0
-    ): List<ReportResponse>
+    suspend fun getReportsNearby(
+        @Query("lat") latitude: Double,
+        @Query("long") longitude: Double,
+        @Query("radius_km") radiusKm: Int = 15,
+        @Query("sort") sort: String = "recent",
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int
+    ): Response<List<ReportResponse>>
 
     @GET("reports/{id}")
     suspend fun getReportDetail(@Path("id") id: Int): ReportResponse

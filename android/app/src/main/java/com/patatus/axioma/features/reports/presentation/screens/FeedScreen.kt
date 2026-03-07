@@ -1,6 +1,5 @@
 package com.patatus.axioma.features.reports.presentation.screens
 
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,10 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,6 +23,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,20 +35,36 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
+import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
-import com.patatus.axioma.features.reports.presentation.viewmodels.FeedUiState
 import com.patatus.axioma.features.reports.presentation.viewmodels.FeedViewModel
 
 @Composable
 fun FeedScreen(
-    viewModel: FeedViewModel= hiltViewModel(),
+    viewModel: FeedViewModel = hiltViewModel(),
     onNavigateToCreate: () -> Unit,
-    onNavigateToDetail: (Int) -> Unit
+    onNavigateToDetail: (Int) -> Unit,
+    currentLatitude: Double? = null,
+    currentLongitude: Double? = null,
+    cityRadiusKm: Int = 15
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) {
-        viewModel.refresh()
+    val feedQuery by viewModel.feedQuery.collectAsStateWithLifecycle()
+    val reports = viewModel.reportsFeed.collectAsLazyPagingItems()
+
+    LaunchedEffect(currentLatitude, currentLongitude, cityRadiusKm) {
+        if (currentLatitude != null && currentLongitude != null) {
+            viewModel.onLocationUpdated(
+                latitude = currentLatitude,
+                longitude = currentLongitude,
+                radiusKm = cityRadiusKm
+            )
+        }
     }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToCreate) {
@@ -55,25 +72,86 @@ fun FeedScreen(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            when (val state = uiState) {
-                is FeedUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            TabRow(selectedTabIndex = if (feedQuery.sort == FeedSort.RELEVANT) 0 else 1) {
+                Tab(
+                    selected = feedQuery.sort == FeedSort.RELEVANT,
+                    onClick = { viewModel.onSortSelected(FeedSort.RELEVANT) },
+                    text = { Text("Relevantes") }
+                )
+                Tab(
+                    selected = feedQuery.sort == FeedSort.RECENT,
+                    onClick = { viewModel.onSortSelected(FeedSort.RECENT) },
+                    text = { Text("Recientes") }
+                )
+            }
+
+            when (val refreshState = reports.loadState.refresh) {
+                is LoadState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
                 }
-                is FeedUiState.Error -> {
-                    Text(
-                        text = state.msg,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                is LoadState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = refreshState.error.message ?: "Error al cargar el feed",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Button(onClick = { reports.retry() }) {
+                                Text("Reintentar")
+                            }
+                        }
+                    }
                 }
-                is FeedUiState.Success -> {
+                is LoadState.NotLoading -> {
                     LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(state.reports) { report ->
-                            ReportItem(report = report, onClick = { onNavigateToDetail(report.id) })
+                        items(
+                            count = reports.itemCount,
+                            key = reports.itemKey { it.id },
+                            contentType = reports.itemContentType { "Report" }
+                        ) { index ->
+                            val report = reports[index]
+                            if (report != null) {
+                                ReportItem(report = report, onClick = { onNavigateToDetail(report.id) })
+                            }
+                        }
+
+                        when (val appendState = reports.loadState.append) {
+                            is LoadState.Loading -> {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+                            }
+                            is LoadState.Error -> {
+                                item {
+                                    Text(
+                                        text = "Error al cargar mas denuncias: ${appendState.error.message}",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                            is LoadState.NotLoading -> Unit
                         }
                     }
                 }
