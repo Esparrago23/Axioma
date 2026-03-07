@@ -14,6 +14,7 @@ object AppNavigation {
         const val LOGIN = "login"
         const val REGISTER = "register"
         const val FEED = "feed"
+        const val PROFILE = "profile"
         const val CREATE_REPORT = "create_report"
         const val REPORT_DETAIL = "report_detail/{reportId}"
 
@@ -41,6 +42,10 @@ object AppNavigation {
 
             composable(Routes.FEED) {
                 screens.Feed(navController)
+            }
+
+            composable(Routes.PROFILE) {
+                screens.Profile(navController)
             }
 
             composable(Routes.CREATE_REPORT) {

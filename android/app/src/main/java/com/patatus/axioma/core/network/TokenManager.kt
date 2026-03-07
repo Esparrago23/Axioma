@@ -10,4 +10,8 @@ object TokenManager {
     fun getToken(): String? {
         return token
     }
+
+    fun clearToken() {
+        token = null
+    }
 }
