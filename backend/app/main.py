@@ -10,12 +10,9 @@ from app.modules.reports.infrastructure.routes.report_routes import router as re
 
 APP_DIR = Path(__file__).resolve().parent
 STATIC_DIR = APP_DIR / "static"
-PROFILE_PICTURES_DIR = STATIC_DIR / "profile_pictures"
-PROFILE_PICTURES_DIR.mkdir(parents=True, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    PROFILE_PICTURES_DIR.mkdir(parents=True, exist_ok=True)
     init_db()
     yield
 
