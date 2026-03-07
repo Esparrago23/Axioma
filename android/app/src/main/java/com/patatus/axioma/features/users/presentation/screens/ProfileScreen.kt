@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AlternateEmail
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -54,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -67,8 +70,17 @@ fun ProfileScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackState = remember { SnackbarHostState() }
-    var isEditing by rememberSaveable { mutableStateOf(false) }
+    var editMode by rememberSaveable { mutableStateOf(ProfileEditMode.NONE.name) }
+    val isDataEditing = editMode == ProfileEditMode.DATA.name
+    val isPhotoEditing = editMode == ProfileEditMode.PHOTO.name
     val brandColor = Color(0xFF64B6AB)
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.onProfilePictureUrlChanged(uri.toString())
+        }
+    }
 
     LaunchedEffect(state.errorMessage, state.successMessage) {
         val message = state.errorMessage ?: state.successMessage
@@ -105,27 +117,22 @@ fun ProfileScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.Rounded.ArrowBack,
                         contentDescription = "Volver"
                     )
                 }
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Axioma",
-                        color = brandColor,
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                Text(
+                    text = "Axioma",
+                    color = brandColor,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(x = (-8).dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -148,7 +155,7 @@ fun ProfileScreen(
                 fontSize = 34.sp,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .clickable { isEditing = true }
+                    .clickable { editMode = ProfileEditMode.PHOTO.name }
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -184,10 +191,10 @@ fun ProfileScreen(
                 title = "Editar Datos",
                 value = "",
                 clickable = true,
-                onClick = { isEditing = true }
+                onClick = { editMode = ProfileEditMode.DATA.name }
             )
 
-            if (isEditing) {
+            if (isDataEditing) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 OutlinedTextField(
@@ -206,11 +213,51 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                    value = state.profilePictureUrlInput,
-                    onValueChange = viewModel::onProfilePictureUrlChanged,
-                    label = { Text("URL de foto de perfil") },
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.saveProfileChanges()
+                            editMode = ProfileEditMode.NONE.name
+                        },
+                        enabled = !state.isSaving && !state.isDeleting,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (state.isSaving) "Guardando..." else "Guardar")
+                    }
+
+                    TextButton(
+                        onClick = { editMode = ProfileEditMode.NONE.name },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            }
+
+            if (isPhotoEditing) {
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Cambiar foto de perfil",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Button(
+                    onClick = { pickImageLauncher.launch("image/*") },
+                    enabled = !state.isSaving && !state.isDeleting,
                     modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Subir archivo")
+                }
+
+                Text(
+                    text = "Archivo seleccionado: ${state.profilePictureUrlInput.takeIf { it.isNotBlank() } ?: "Ninguno"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF4A4A4A)
                 )
 
                 Row(
@@ -220,29 +267,29 @@ fun ProfileScreen(
                     Button(
                         onClick = {
                             viewModel.saveProfileChanges()
-                            isEditing = false
+                            editMode = ProfileEditMode.NONE.name
                         },
                         enabled = !state.isSaving && !state.isDeleting,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(if (state.isSaving) "Guardando..." else "Guardar")
+                        Text(if (state.isSaving) "Guardando..." else "Guardar foto")
                     }
 
                     TextButton(
-                        onClick = { isEditing = false },
+                        onClick = { editMode = ProfileEditMode.NONE.name },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Cancelar")
                     }
                 }
+            }
 
-                TextButton(
-                    onClick = viewModel::deleteAccount,
-                    enabled = !state.isSaving && !state.isDeleting,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (state.isDeleting) "Eliminando..." else "Eliminar cuenta")
-                }
+            TextButton(
+                onClick = viewModel::deleteAccount,
+                enabled = !state.isSaving && !state.isDeleting,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (state.isDeleting) "Eliminando..." else "Eliminar cuenta")
             }
         }
     }
@@ -299,4 +346,10 @@ private fun ProfileInfoRow(
 private fun formatMemberSince(createdAt: String?): String {
     if (createdAt.isNullOrBlank()) return "-"
     return createdAt.substringBefore("T")
+}
+
+private enum class ProfileEditMode {
+    NONE,
+    DATA,
+    PHOTO
 }
