@@ -8,6 +8,7 @@ fun TokenResponse.toDomain(): User {
         userId = this.userId,
         username = this.username,
         accessToken = this.accessToken,
+        refreshToken = this.refreshToken,
         reputation = this.reputation
     )
 }

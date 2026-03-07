@@ -2,6 +2,7 @@ package com.patatus.axioma.features.users.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.patatus.axioma.core.network.SecureSessionStore
 import com.patatus.axioma.core.network.TokenManager
 import com.patatus.axioma.features.users.domain.usecases.DeleteUserAccountUseCase
 import com.patatus.axioma.features.users.domain.usecases.GetUserProfileUseCase
@@ -150,6 +151,7 @@ class ProfileViewModel @Inject constructor(
             deleteUserAccountUseCase()
                 .onSuccess {
                     TokenManager.clearToken()
+                    SecureSessionStore.clearRefreshToken()
                     _state.update {
                         it.copy(
                             isDeleting = false,

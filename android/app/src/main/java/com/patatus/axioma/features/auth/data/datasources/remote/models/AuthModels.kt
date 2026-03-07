@@ -9,10 +9,20 @@ data class LoginRequest(
 
 data class TokenResponse(
     @SerializedName("access_token") val accessToken: String,
+    @SerializedName("refresh_token") val refreshToken: String,
     @SerializedName("token_type") val tokenType: String,
     @SerializedName("user_id") val userId: Int,
     val username: String,
     val reputation: Int
+)
+
+data class RefreshTokenRequest(
+    @SerializedName("refresh_token") val refreshToken: String,
+    @SerializedName("device_name") val deviceName: String? = null,
+)
+
+data class LogoutRequest(
+    @SerializedName("refresh_token") val refreshToken: String,
 )
 
 data class UserResponse(

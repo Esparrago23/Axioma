@@ -1,9 +1,12 @@
 package com.patatus.axioma.features.auth.data.repositories
 
 import com.patatus.axioma.core.network.TokenManager
+import com.patatus.axioma.core.network.SecureSessionStore
 import com.patatus.axioma.features.auth.data.datasources.remote.api.AuthApiService
 import com.patatus.axioma.features.auth.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.auth.data.datasources.remote.models.LoginRequest
+import com.patatus.axioma.features.auth.data.datasources.remote.models.LogoutRequest
+import com.patatus.axioma.features.auth.data.datasources.remote.models.RefreshTokenRequest
 import com.patatus.axioma.features.auth.domain.entities.User
 import com.patatus.axioma.features.auth.domain.repositories.AuthRepository
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +24,7 @@ class AuthRepositoryImpl @Inject constructor(
             try {
                 val response = apiService.login(LoginRequest(email, pass))
                 TokenManager.saveToken(response.accessToken)
+                SecureSessionStore.saveRefreshToken(response.refreshToken)
                 Result.success(response.toDomain())
             } catch (e: HttpException) {
                 val errorBody = e.response()?.errorBody()?.string()
@@ -33,6 +37,61 @@ class AuthRepositoryImpl @Inject constructor(
             } catch (e: Exception) {
                 Result.failure(Exception("Error de conexión. Verifica tu internet."))
             }
+        }
+    }
+
+    override suspend fun quickLoginWithStoredSession(): Result<User> {
+        return withContext(Dispatchers.IO) {
+            val storedRefreshToken = SecureSessionStore.getRefreshToken()
+            if (storedRefreshToken.isNullOrBlank()) {
+                return@withContext Result.failure(Exception("No hay sesion guardada para inicio rapido"))
+            }
+
+            try {
+                val response = apiService.refresh(
+                    RefreshTokenRequest(
+                        refreshToken = storedRefreshToken,
+                        deviceName = "android-biometric",
+                    )
+                )
+
+                TokenManager.saveToken(response.accessToken)
+                SecureSessionStore.saveRefreshToken(response.refreshToken)
+                Result.success(response.toDomain())
+            } catch (e: HttpException) {
+                if (e.code() == 401) {
+                    SecureSessionStore.clearRefreshToken()
+                    TokenManager.clearToken()
+                    return@withContext Result.failure(Exception("Tu sesion rapida expiro. Inicia sesion de nuevo."))
+                }
+
+                val errorBody = e.response()?.errorBody()?.string()
+                val errorMessage = try {
+                    JSONObject(errorBody).getString("detail")
+                } catch (jsonException: Exception) {
+                    "Error desconocido en el servidor (${e.code()})"
+                }
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(Exception("Error de conexion. Verifica tu internet."))
+            }
+        }
+    }
+
+    override fun hasStoredQuickSession(): Boolean {
+        return !SecureSessionStore.getRefreshToken().isNullOrBlank()
+    }
+
+    override suspend fun clearStoredSession() {
+        withContext(Dispatchers.IO) {
+            val storedRefreshToken = SecureSessionStore.getRefreshToken()
+            if (!storedRefreshToken.isNullOrBlank()) {
+                runCatching {
+                    apiService.logout(LogoutRequest(storedRefreshToken))
+                }
+            }
+            SecureSessionStore.clearRefreshToken()
+            TokenManager.clearToken()
         }
     }
 

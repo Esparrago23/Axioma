@@ -17,6 +17,8 @@ gson = "2.10.1"
 navigationCompose = "2.8.5"
 room = "2.8.4"
 paging = "3.4.1"
+biometric = "1.1.0"
+securityCrypto = "1.1.0-alpha06"
 
 
 [libraries]
@@ -51,6 +53,8 @@ room-paging = { group = "androidx.room", name = "room-paging", version.ref = "ro
 
 paging-runtime = { group = "androidx.paging", name = "paging-runtime-ktx", version.ref = "paging" }
 paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "paging" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
