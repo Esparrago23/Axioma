@@ -1,7 +1,11 @@
 package com.patatus.axioma.features.reports.presentation.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,24 +23,30 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +60,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.patatus.axioma.core.hardware.camera.rememberCameraCaptureLauncher
+import com.patatus.axioma.core.hardware.camera.rememberCameraPermissionRequester
 import com.patatus.axioma.features.reports.presentation.viewmodels.CreateReportViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,16 +74,117 @@ fun CreateReportScreen(
     val title = viewModel.title.collectAsStateWithLifecycle()
     val description = viewModel.description.collectAsStateWithLifecycle()
     val category = viewModel.category.collectAsStateWithLifecycle()
+    val evidencePhotoUri = viewModel.evidencePhotoUri.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     var expanded by remember { mutableStateOf(false) }
+    var showPhotoSourceSheet by remember { mutableStateOf(false) }
+    var showCameraRationaleDialog by remember { mutableStateOf(false) }
+    var pendingCameraLaunch by remember { mutableStateOf(false) }
+
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.onEvidencePhotoSelected(uri.toString())
+        }
+    }
+
+    val cameraPermission = rememberCameraPermissionRequester()
+    val cameraLauncher = rememberCameraCaptureLauncher { photoUri ->
+        viewModel.onEvidencePhotoSelected(photoUri.toString())
+    }
 
     val categories = listOf("INFRAESTRUCTURA", "SEGURIDAD", "SANITIZACION", "VANDALISMO", "SOCIAL")
+
+    LaunchedEffect(cameraPermission.hasPermission, pendingCameraLaunch) {
+        if (cameraPermission.hasPermission && pendingCameraLaunch) {
+            pendingCameraLaunch = false
+            cameraLauncher.launch()
+        }
+    }
 
     LaunchedEffect(uiState) {
         if (uiState is ReportUiState.Success) {
             onBack()
         }
+    }
+
+    if (showPhotoSourceSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showPhotoSourceSheet = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "Evidencia del reporte",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                HorizontalDivider()
+
+                PhotoSourceItem(
+                    icon = Icons.Outlined.CameraAlt,
+                    title = "Camara",
+                    onClick = {
+                        showPhotoSourceSheet = false
+                        if (cameraPermission.hasPermission) {
+                            cameraLauncher.launch()
+                        } else {
+                            pendingCameraLaunch = true
+                            if (cameraPermission.shouldShowRationale) {
+                                showCameraRationaleDialog = true
+                            } else {
+                                cameraPermission.requestPermission()
+                            }
+                        }
+                    }
+                )
+
+                PhotoSourceItem(
+                    icon = Icons.Default.Image,
+                    title = "Galeria",
+                    onClick = {
+                        showPhotoSourceSheet = false
+                        pickImageLauncher.launch("image/*")
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+    }
+
+    if (showCameraRationaleDialog) {
+        AlertDialog(
+            onDismissRequest = { showCameraRationaleDialog = false },
+            title = { Text("Permiso de camara") },
+            text = { Text("Necesitamos acceso a la camara para adjuntar evidencia del reporte.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCameraRationaleDialog = false
+                        cameraPermission.requestPermission()
+                    }
+                ) {
+                    Text("Continuar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingCameraLaunch = false
+                        showCameraRationaleDialog = false
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -189,7 +303,34 @@ fun CreateReportScreen(
                 )
             )
 
-            // 4. Manejo de Errores
+            // 4. Evidencia fotográfica
+            Text(
+                text = "Evidencia fotográfica",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Button(
+                onClick = { showPhotoSourceSheet = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Image, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Adjuntar foto")
+            }
+
+            if (evidencePhotoUri.value.isNotBlank()) {
+                AsyncImage(
+                    model = evidencePhotoUri.value,
+                    contentDescription = "Vista previa de evidencia",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp),
+                )
+            }
+
+            // 5. Manejo de Errores
             if (uiState is ReportUiState.Error) {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
@@ -218,7 +359,7 @@ fun CreateReportScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 5. Botón de Acción
+            // 6. Botón de Acción
             Button(
                 onClick = { viewModel.sendReport() },
                 modifier = Modifier
@@ -249,5 +390,33 @@ fun CreateReportScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun PhotoSourceItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+            .padding(horizontal = 6.dp, vertical = 12.dp)
+            .then(Modifier),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.clickable { onClick() }
+        )
     }
 }

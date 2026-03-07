@@ -39,3 +39,7 @@ data class VoteResponse(
     @SerializedName("new_score") val newScore: Int,
     @SerializedName("report_status") val reportStatus: String
 )
+
+data class ReportPhotoUploadResponse(
+    @SerializedName("photo_url") val photoUrl: String
+)

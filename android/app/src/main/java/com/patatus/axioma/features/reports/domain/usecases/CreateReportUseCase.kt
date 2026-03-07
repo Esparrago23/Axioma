@@ -5,7 +5,14 @@ import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
 import javax.inject.Inject
 
 class CreateReportUseCase @Inject constructor(private val repo: ReportsRepository) {
-    suspend operator fun invoke(title: String, desc: String, lat: Double, long: Double, cat: String): Result<Report> {
-        return repo.createReport(title, desc, lat, long, cat)
+    suspend operator fun invoke(
+        title: String,
+        desc: String,
+        lat: Double,
+        long: Double,
+        cat: String,
+        photoUrl: String? = null
+    ): Result<Report> {
+        return repo.createReport(title, desc, lat, long, cat, photoUrl)
     }
 }

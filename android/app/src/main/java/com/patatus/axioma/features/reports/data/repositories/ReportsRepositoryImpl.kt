@@ -1,10 +1,13 @@
 package com.patatus.axioma.features.reports.data.repositories
 
+import android.content.Context
+import androidx.core.net.toUri
 import androidx.paging.ExperimentalPagingApi
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.patatus.axioma.core.database.AxiomaDatabase
 import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
 import com.patatus.axioma.features.reports.data.datasources.remote.mediator.ReportRemoteMediator
@@ -21,18 +24,30 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
 import retrofit2.HttpException
+import java.io.File
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 class ReportsRepositoryImpl @Inject constructor(
     private val api: ReportsApiService,
-    private val database: AxiomaDatabase
+    private val database: AxiomaDatabase,
+    @ApplicationContext private val context: Context
 ) : ReportsRepository {
 
-    override suspend fun createReport(title: String, desc: String, lat: Double, long: Double, category: String): Result<Report> {
+    override suspend fun createReport(
+        title: String,
+        desc: String,
+        lat: Double,
+        long: Double,
+        category: String,
+        photoUrl: String?
+    ): Result<Report> {
         return withContext(Dispatchers.IO) {
             try {
                 val request = ReportCreateRequest(
@@ -40,7 +55,8 @@ class ReportsRepositoryImpl @Inject constructor(
                     description = desc,
                     category = category,
                     latitude = lat,
-                    longitude = long
+                    longitude = long,
+                    photoUrl = photoUrl
                 )
                 val response = api.createReport(request)
                 val entity = response.toDomain()
@@ -55,6 +71,37 @@ class ReportsRepositoryImpl @Inject constructor(
                 Result.failure(Exception(errorMessage))
             } catch (e: Exception) {
                 Result.failure(e)
+            }
+        }
+    }
+
+    override suspend fun uploadReportPhoto(localUri: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val uri = localUri.toUri()
+                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val extension = mimeType.substringAfter('/', "jpg")
+                val tempFile = File.createTempFile("report_upload_", ".${extension}", context.cacheDir)
+
+                context.contentResolver.openInputStream(uri).use { input ->
+                    if (input == null) {
+                        return@withContext Result.failure(Exception("No se pudo leer la imagen seleccionada"))
+                    }
+                    tempFile.outputStream().use { output -> input.copyTo(output) }
+                }
+
+                val body = tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
+                val part = MultipartBody.Part.createFormData("photo", tempFile.name, body)
+                val response = api.uploadReportPhoto(part)
+                tempFile.delete()
+
+                Result.success(response.photoUrl)
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val msg = try { JSONObject(errorBody).getString("detail") } catch (ex: Exception) { "Error del servidor" }
+                Result.failure(Exception(msg))
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "No se pudo subir la evidencia"))
             }
         }
     }
