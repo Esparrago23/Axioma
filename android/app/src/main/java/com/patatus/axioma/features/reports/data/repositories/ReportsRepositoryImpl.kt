@@ -88,8 +88,29 @@ class ReportsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getReportsMap(lat: Double, long: Double): Result<List<Report>> {
-        return safeApiCall {
-            api.getReportsByLocation(lat, long).map { it.toDomain() }
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.getReportsNearby(
+                    latitude = lat,
+                    longitude = long,
+                    radiusKm = 15,
+                    sort = "recent",
+                    limit = 100,
+                    offset = 0
+                )
+
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+
+                Result.success(response.body().orEmpty().map { it.toDomain() })
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val msg = try { JSONObject(errorBody).getString("detail") } catch (ex: Exception) { "Error del servidor" }
+                Result.failure(Exception(msg))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 

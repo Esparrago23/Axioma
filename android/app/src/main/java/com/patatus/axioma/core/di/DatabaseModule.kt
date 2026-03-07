@@ -2,6 +2,7 @@ package com.patatus.axioma.core.di
 
 import android.content.Context
 import androidx.room.Room
+import com.patatus.axioma.BuildConfig
 import com.patatus.axioma.core.database.AxiomaDatabase
 import com.patatus.axioma.features.reports.data.datasources.local.db.daos.ReportDao
 import com.patatus.axioma.features.reports.data.datasources.local.db.daos.ReportRemoteKeysDao
@@ -21,11 +22,17 @@ object DatabaseModule {
     fun provideAxiomaDatabase(
         @ApplicationContext context: Context
     ): AxiomaDatabase {
-        return Room.databaseBuilder(
+        val builder = Room.databaseBuilder(
             context,
             AxiomaDatabase::class.java,
             "axioma_database"
-        ).fallbackToDestructiveMigration().build()
+        )
+
+        return if (BuildConfig.DEBUG) {
+            builder.fallbackToDestructiveMigration().build()
+        } else {
+            builder.build()
+        }
     }
 
     @Provides

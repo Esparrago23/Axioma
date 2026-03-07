@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
-from math import radians, cos, sin, asin, sqrt
+from math import cos, radians
 from typing import List, Optional
 from sqlmodel import Session, select
+from sqlalchemy import and_, desc, func
 from app.modules.reports.domain.entities import Report, Vote, CategoryEnum, ReportStatus
 from app.modules.reports.domain.repository import ReportRepository
 from app.modules.reports.infrastructure.persistence.models import ReportModel, VoteModel
@@ -40,30 +41,51 @@ class SQLReportRepository(ReportRepository):
         offset: int,
         limit: int
     ) -> List[Report]:
-        statement = select(ReportModel).where(ReportModel.status == ReportStatus.ACTIVE.value)
-        results = self.session.exec(statement).all()
-        
-        nearby = []
-        for r in results:
-            if self._haversine(lat, long, r.latitude, r.longitude) <= radius_km:
-                nearby.append(self._to_domain(r))
+        # Cheap geospatial prefilter that lets DB indexes reduce candidate rows before exact distance.
+        lat_delta = radius_km / 111.0
+        safe_cos = max(abs(cos(radians(lat))), 1e-6)
+        long_delta = min(180.0, radius_km / (111.0 * safe_cos))
+
+        # Haversine distance in SQL (km) so filtering/pagination stays in DB.
+        inner = (
+            func.cos(func.radians(lat)) * func.cos(func.radians(ReportModel.latitude))
+            * func.cos(func.radians(ReportModel.longitude) - func.radians(long))
+            + func.sin(func.radians(lat)) * func.sin(func.radians(ReportModel.latitude))
+        )
+        clamped_inner = func.least(1.0, func.greatest(-1.0, inner))
+        distance_km = 6371.0 * func.acos(clamped_inner)
+
+        statement = select(ReportModel).where(
+            and_(
+                ReportModel.status == ReportStatus.ACTIVE.value,
+                ReportModel.latitude >= lat - lat_delta,
+                ReportModel.latitude <= lat + lat_delta,
+                ReportModel.longitude >= long - long_delta,
+                ReportModel.longitude <= long + long_delta,
+                distance_km <= radius_km,
+            )
+        )
 
         if sort == "relevant":
             cutoff = datetime.utcnow() - timedelta(hours=48)
-            nearby = [r for r in nearby if r.created_at >= cutoff]
-            nearby.sort(key=lambda r: (-r.credibility_score, -r.created_at.timestamp()))
+            statement = statement.where(ReportModel.created_at >= cutoff).order_by(
+                desc(ReportModel.credibility_score),
+                desc(ReportModel.created_at),
+            )
         else:
-            nearby.sort(key=lambda r: r.created_at, reverse=True)
+            statement = statement.order_by(desc(ReportModel.created_at))
 
-        return nearby[offset : offset + limit]
+        statement = statement.offset(offset).limit(limit)
+        results = self.session.exec(statement).all()
+        return [self._to_domain(r) for r in results]
     
     def get_all(self, offset: int, limit: int) -> List[Report]:
         statement = (
             select(ReportModel)
             .where(ReportModel.status == ReportStatus.ACTIVE.value)
+            .order_by(desc(ReportModel.created_at))
             .offset(offset)
             .limit(limit)
-            .order_by(ReportModel.created_at.desc())
         )
         results = self.session.exec(statement).all()
         return [self._to_domain(r) for r in results]
@@ -91,8 +113,3 @@ class SQLReportRepository(ReportRepository):
     def _to_domain(self, model: ReportModel) -> Report:
         return Report(**model.model_dump(exclude={"category", "status"}), category=CategoryEnum(model.category), status=ReportStatus(model.status))
     
-    def _haversine(self, lat1, lon1, lat2, lon2):
-        R = 6371  # km
-        dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
-        a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
-        return 2 * R * asin(sqrt(a))
