@@ -1,8 +1,9 @@
+from datetime import datetime
 from typing import Optional
 from sqlmodel import Session, select
-from app.modules.auth.domain.entities import User
+from app.modules.auth.domain.entities import RefreshTokenSession, User
 from app.modules.auth.domain.repository import UserRepository
-from app.modules.auth.infrastructure.persistence.models import UserModel
+from app.modules.auth.infrastructure.persistence.models import RefreshTokenModel, UserModel
 
 class SQLUserRepository(UserRepository):
     def __init__(self, session: Session):
@@ -28,3 +29,39 @@ class SQLUserRepository(UserRepository):
     def get_by_id(self, id: int) -> Optional[User]:
         user_db = self.session.get(UserModel, id)
         return User(**user_db.model_dump()) if user_db else None
+
+    def save_refresh_session(self, session: RefreshTokenSession) -> RefreshTokenSession:
+        existing = self.session.exec(
+            select(RefreshTokenModel).where(RefreshTokenModel.token_hash == session.token_hash)
+        ).first()
+
+        if existing:
+            existing.expires_at = session.expires_at
+            existing.device_name = session.device_name
+            existing.last_used_at = session.last_used_at
+            existing.revoked_at = session.revoked_at
+            refresh_db = existing
+        else:
+            refresh_db = RefreshTokenModel(**session.model_dump())
+            self.session.add(refresh_db)
+
+        self.session.commit()
+        self.session.refresh(refresh_db)
+        return RefreshTokenSession(**refresh_db.model_dump())
+
+    def get_refresh_session(self, token_hash: str) -> Optional[RefreshTokenSession]:
+        refresh_db = self.session.exec(
+            select(RefreshTokenModel).where(RefreshTokenModel.token_hash == token_hash)
+        ).first()
+        return RefreshTokenSession(**refresh_db.model_dump()) if refresh_db else None
+
+    def revoke_refresh_session(self, token_hash: str) -> None:
+        refresh_db = self.session.exec(
+            select(RefreshTokenModel).where(RefreshTokenModel.token_hash == token_hash)
+        ).first()
+        if not refresh_db:
+            return
+
+        refresh_db.revoked_at = datetime.utcnow()
+        self.session.add(refresh_db)
+        self.session.commit()

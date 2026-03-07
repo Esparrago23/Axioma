@@ -11,10 +11,20 @@ class LoginDTO(BaseModel):
 
 class TokenResponseDTO(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     user_id: int       
     username: str      
     reputation: int
+
+
+class RefreshTokenRequestDTO(BaseModel):
+    refresh_token: str
+    device_name: Optional[str] = None
+
+
+class LogoutRequestDTO(BaseModel):
+    refresh_token: str
     
 class UserResponseDTO(BaseModel):
     id: int
