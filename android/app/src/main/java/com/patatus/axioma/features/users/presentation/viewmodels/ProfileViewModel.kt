@@ -2,6 +2,7 @@ package com.patatus.axioma.features.users.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.patatus.axioma.core.network.SecureSessionStore
 import com.patatus.axioma.core.network.TokenManager
 import com.patatus.axioma.features.users.domain.usecases.DeleteUserAccountUseCase
 import com.patatus.axioma.features.users.domain.usecases.GetUserProfileUseCase
@@ -21,7 +22,8 @@ class ProfileViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val updateUserProfileUseCase: UpdateUserProfileUseCase,
     private val uploadUserProfilePhotoUseCase: UploadUserProfilePhotoUseCase,
-    private val deleteUserAccountUseCase: DeleteUserAccountUseCase
+    private val deleteUserAccountUseCase: DeleteUserAccountUseCase,
+    private val secureSessionStore: SecureSessionStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileUiState())
@@ -150,6 +152,7 @@ class ProfileViewModel @Inject constructor(
             deleteUserAccountUseCase()
                 .onSuccess {
                     TokenManager.clearToken()
+                    secureSessionStore.clearRefreshToken() // <-- 2. USAMOS LA INSTANCIA (con s minúscula)
                     _state.update {
                         it.copy(
                             isDeleting = false,

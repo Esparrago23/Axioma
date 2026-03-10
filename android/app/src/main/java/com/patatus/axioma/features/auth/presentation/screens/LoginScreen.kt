@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -42,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -51,7 +53,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.fragment.app.FragmentActivity
 import com.patatus.axioma.R
+import com.patatus.axioma.core.hardware.biometric.BiometricAuthManager
+import com.patatus.axioma.core.hardware.biometric.BiometricAvailability
 import com.patatus.axioma.features.auth.presentation.viewmodels.AuthUiState
 import com.patatus.axioma.features.auth.presentation.viewmodels.AuthViewModel
 
@@ -65,10 +70,19 @@ fun LoginScreen(
     val email by viewModel.email.collectAsStateWithLifecycle()
     val password by viewModel.password.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val biometricAvailable by viewModel.biometricAvailable.collectAsStateWithLifecycle()
+    val quickLoginAvailable by viewModel.quickLoginAvailable.collectAsStateWithLifecycle()
 
     var passwordVisible by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
 
     val scrollState = rememberScrollState()
+
+    LaunchedEffect(activity) {
+        val availability = activity?.let { BiometricAuthManager.checkAvailability(it) }
+        viewModel.onBiometricAvailabilityChanged(availability == BiometricAvailability.AVAILABLE)
+    }
 
     /* ---------- Navegación segura ---------- */
     LaunchedEffect(uiState) {
@@ -227,6 +241,37 @@ fun LoginScreen(
                             fontWeight = FontWeight.Bold
                         )
                     )
+                }
+            }
+
+            if (biometricAvailable && quickLoginAvailable) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        if (activity == null) {
+                            viewModel.onBiometricPromptError("No se pudo iniciar el prompt biometrico")
+                            return@Button
+                        }
+
+                        BiometricAuthManager.authenticate(
+                            activity = activity,
+                            onSuccess = { viewModel.onQuickLogin() },
+                            onError = { message -> viewModel.onBiometricPromptError(message) },
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    enabled = uiState !is AuthUiState.Loading,
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Fingerprint,
+                        contentDescription = null,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Inicio rapido con huella/rostro")
                 }
             }
 

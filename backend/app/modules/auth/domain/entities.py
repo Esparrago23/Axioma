@@ -11,3 +11,14 @@ class User(BaseModel):
     profile_picture_url: Optional[str] = None
     full_name: Optional[str] = None
     created_at: datetime = datetime.utcnow()
+
+
+class RefreshTokenSession(BaseModel):
+    id: Optional[int] = None
+    user_id: int
+    token_hash: str
+    expires_at: datetime
+    device_name: Optional[str] = None
+    created_at: datetime = datetime.utcnow()
+    last_used_at: datetime = datetime.utcnow()
+    revoked_at: Optional[datetime] = None

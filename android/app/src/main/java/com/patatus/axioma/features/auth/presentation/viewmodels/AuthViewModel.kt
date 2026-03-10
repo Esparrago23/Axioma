@@ -2,7 +2,9 @@ package com.patatus.axioma.features.auth.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.patatus.axioma.features.auth.domain.usecases.HasQuickSessionUseCase
 import com.patatus.axioma.features.auth.domain.usecases.LoginUseCase
+import com.patatus.axioma.features.auth.domain.usecases.QuickLoginUseCase
 import com.patatus.axioma.features.auth.domain.usecases.RegisterUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +15,9 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val registerUseCase: RegisterUseCase
+    private val registerUseCase: RegisterUseCase,
+    private val quickLoginUseCase: QuickLoginUseCase,
+    private val hasQuickSessionUseCase: HasQuickSessionUseCase,
 ) : ViewModel() {
 
     private val _email = MutableStateFlow("")
@@ -24,6 +28,16 @@ class AuthViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState = _uiState.asStateFlow()
+
+    private val _biometricAvailable = MutableStateFlow(false)
+    val biometricAvailable = _biometricAvailable.asStateFlow()
+
+    private val _quickLoginAvailable = MutableStateFlow(false)
+    val quickLoginAvailable = _quickLoginAvailable.asStateFlow()
+
+    init {
+        _quickLoginAvailable.value = hasQuickSessionUseCase()
+    }
 
     fun onEmailChanged(value: String) {
         _email.value = value
@@ -71,8 +85,40 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun onBiometricAvailabilityChanged(isAvailable: Boolean) {
+        _biometricAvailable.value = isAvailable
+    }
+
+    fun onQuickLogin() {
+        if (!_biometricAvailable.value || !_quickLoginAvailable.value) {
+            _uiState.value = AuthUiState.Error("El inicio rapido no esta disponible en este dispositivo")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+
+            quickLoginUseCase()
+                .onSuccess { user ->
+                    _quickLoginAvailable.value = true
+                    _uiState.value = AuthUiState.SuccessLogin(user.username)
+                }
+                .onFailure { error ->
+                    _quickLoginAvailable.value = hasQuickSessionUseCase()
+                    _uiState.value = AuthUiState.Error(
+                        error.message ?: "No se pudo iniciar sesion rapida"
+                    )
+                }
+        }
+    }
+
+    fun onBiometricPromptError(message: String) {
+        _uiState.value = AuthUiState.Error(message)
+    }
+
     fun resetState() {
         _uiState.value = AuthUiState.Idle
+        _quickLoginAvailable.value = hasQuickSessionUseCase()
     }
 }
 

@@ -105,4 +105,8 @@ dependencies {
     // Paging 3
     implementation(libs.paging.runtime)
     implementation(libs.paging.compose)
+
+    // Biometric quick login + secure token storage
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.security.crypto)
 }
