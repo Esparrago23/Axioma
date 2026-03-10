@@ -15,7 +15,9 @@ fun ReportResponse.toDomain(): Report {
         photoUrl = this.photoUrl,
         credibilityScore = this.credibilityScore,
         status = this.status,
-        createdAt = this.createdAt
+        createdAt = this.createdAt,
+        userVote = this.userVote ?: 0,
+        authorId = this.userId
     )
 }
 
@@ -46,6 +48,8 @@ fun ReportEntity.toDomain(): Report {
         photoUrl = this.photoUrl,
         credibilityScore = this.credibilityScore,
         status = this.status,
-        createdAt = this.createdAt
+        createdAt = this.createdAt,
+        authorId = 0,
+        userVote = 0
     )
 }

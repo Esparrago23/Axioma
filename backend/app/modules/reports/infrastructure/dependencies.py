@@ -2,6 +2,7 @@ from fastapi import Depends
 from sqlmodel import Session
 from app.core.database import get_session
 from app.modules.reports.infrastructure.persistence.sql_repository import SQLReportRepository
+from app.core.storage.dependencies import get_storage_repository
 
 # --- Importamos Use Cases ---
 from app.modules.reports.application.create_report import CreateReportUseCase
@@ -26,7 +27,7 @@ def get_reports_repo(session: Session = Depends(get_session)) -> SQLReportReposi
 def get_create_uc(repo=Depends(get_reports_repo)): return CreateReportUseCase(repo)
 def get_feed_uc(repo=Depends(get_reports_repo)): return GetFeedUseCase(repo)
 def get_detail_uc(repo=Depends(get_reports_repo)): return GetReportDetailUseCase(repo)
-def get_update_uc(repo=Depends(get_reports_repo)): return UpdateReportUseCase(repo)
+# (⭐ NOTA: Borré get_update_uc de aquí porque lo inyectas abajo manualmente con el storage)
 def get_delete_uc(repo=Depends(get_reports_repo)): return DeleteReportUseCase(repo)
 def get_vote_uc(repo=Depends(get_reports_repo)): return VoteReportUseCase(repo)
 def get_all_reports_uc(repo=Depends(get_reports_repo)): return GetAllReportsUseCase(repo)
@@ -34,7 +35,16 @@ def get_all_reports_uc(repo=Depends(get_reports_repo)): return GetAllReportsUseC
 def get_create_controller(uc=Depends(get_create_uc)): return CreateReportController(uc)
 def get_feed_controller(uc=Depends(get_feed_uc)): return FeedController(uc)
 def get_detail_controller(uc=Depends(get_detail_uc)): return ReportDetailController(uc)
-def get_update_controller(uc=Depends(get_update_uc)): return UpdateReportController(uc)
+# (⭐ NOTA: Borré la versión corta de get_update_controller de aquí)
 def get_delete_controller(uc=Depends(get_delete_uc)): return DeleteReportController(uc)
 def get_vote_controller(uc=Depends(get_vote_uc)): return VoteReportController(uc)
 def get_all_controller(uc=Depends(get_all_reports_uc)): return GetAllReportsController(uc)
+
+# Este es el ÚNICO get_update_controller que debe existir
+def get_update_controller(
+    session = Depends(get_session),
+    storage_repo = Depends(get_storage_repository)
+):
+    repo = SQLReportRepository(session)
+    use_case = UpdateReportUseCase(repo, storage_repo)
+    return UpdateReportController(use_case)

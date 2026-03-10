@@ -1,5 +1,16 @@
 package com.patatus.axioma.core.navigation
 
+// --- IMPORTS DE ANIMACIÓN ---
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+// ----------------------------
+
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
@@ -32,8 +43,8 @@ object AppNavigation {
         const val LOGIN = "login"
         const val REGISTER = "register"
         const val FEED = "feed"
-        const val MAPA = "mapa" // NUEVA
-        const val MIS_REPORTES = "mis_reportes" // NUEVA
+        const val MAPA = "mapa"
+        const val MIS_REPORTES = "mis_reportes"
         const val PROFILE = "profile"
         const val CREATE_REPORT = "create_report"
         const val REPORT_DETAIL = "report_detail/{reportId}"
@@ -56,7 +67,12 @@ object AppNavigation {
 
         Scaffold(
             bottomBar = {
-                if (showBottomBar) {
+                // --- ANIMACIÓN DE LA BARRA INFERIOR ---
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                ) {
                     NavigationBar {
                         val bottomNavItems = listOf(
                             BottomNavItem(Routes.FEED, "Inicio", Icons.Default.Home),
@@ -90,14 +106,26 @@ object AppNavigation {
             NavHost(
                 navController = navController,
                 startDestination = Routes.LOGIN,
-                modifier = Modifier.padding(innerPadding) // <-- MUY IMPORTANTE PARA QUE LA BARRA NO TAPE EL CONTENIDO
+                modifier = Modifier.padding(innerPadding),
+                // --- ANIMACIONES DE TRANSICIÓN DE PANTALLAS ---
+                enterTransition = {
+                    slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } + fadeIn(animationSpec = tween(300))
+                },
+                exitTransition = {
+                    slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } + fadeOut(animationSpec = tween(300))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } + fadeIn(animationSpec = tween(300))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } + fadeOut(animationSpec = tween(300))
+                }
             ) {
 
                 composable(Routes.LOGIN) { screens.Login(navController) }
                 composable(Routes.REGISTER) { screens.Register(navController) }
                 composable(Routes.FEED) { screens.Feed(navController) }
 
-                // Nuevas rutas agregadas al NavHost
                 composable(Routes.MAPA) { screens.Mapa(navController) }
                 composable(Routes.MIS_REPORTES) { screens.MisReportes(navController) }
 

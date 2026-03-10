@@ -12,7 +12,8 @@ class SQLReportRepository(ReportRepository):
         self.session = session
 
     def save(self, report: Report) -> Report:
-        data = report.model_dump()
+        # Excluimos 'user_vote' porque esa columna NO existe en la tabla de reportes
+        data = report.model_dump(exclude={"user_vote"}) 
         data["category"] = report.category.value
         data["status"] = report.status.value
         
@@ -28,9 +29,18 @@ class SQLReportRepository(ReportRepository):
         self.session.refresh(report_db)
         return self._to_domain(report_db)
 
-    def get_by_id(self, id: int) -> Optional[Report]:
+    def get_by_id(self, id: int, current_user_id: Optional[int] = None) -> Optional[Report]:
         report_db = self.session.get(ReportModel, id)
-        return self._to_domain(report_db) if report_db else None
+        if not report_db: return None
+        
+        report = self._to_domain(report_db)
+        
+        if current_user_id:
+            vote = self.get_vote(user_id=current_user_id, report_id=id)
+            # Ahora report sí tiene el campo user_vote gracias al cambio en entities.py
+            report.user_vote = vote.vote_value if vote else 0
+            
+        return report
 
     def get_nearby(
         self,
@@ -91,6 +101,7 @@ class SQLReportRepository(ReportRepository):
         return [self._to_domain(r) for r in results]
 
     def delete(self, report_id: int) -> bool:
+        """Borra un reporte por su ID."""
         report_db = self.session.get(ReportModel, report_id)
         if report_db:
             self.session.delete(report_db)
@@ -99,17 +110,42 @@ class SQLReportRepository(ReportRepository):
         return False
 
     def save_vote(self, vote: Vote) -> Vote:
+        """Guarda o actualiza un voto usando merge para evitar UniqueViolation."""
         vote_db = VoteModel(**vote.model_dump())
-        self.session.add(vote_db)
+        self.session.merge(vote_db) # merge es la clave para que no te de el error de ID duplicado
         self.session.commit()
-        self.session.refresh(vote_db)
-        return Vote(**vote_db.model_dump())
+        return vote
 
     def get_vote(self, user_id: int, report_id: int) -> Optional[Vote]:
-        statement = select(VoteModel).where(VoteModel.user_id == user_id, VoteModel.report_id == report_id)
+        """Busca un voto específico."""
+        statement = select(VoteModel).where(
+            VoteModel.user_id == user_id, 
+            VoteModel.report_id == report_id
+        )
         result = self.session.exec(statement).first()
         return Vote(**result.model_dump()) if result else None
 
+    def delete_vote(self, user_id: int, report_id: int) -> bool:
+        """BORRA un voto (necesario para el toggle de votos)."""
+        statement = select(VoteModel).where(
+            VoteModel.user_id == user_id, 
+            VoteModel.report_id == report_id
+        )
+        vote_db = self.session.exec(statement).first()
+        if vote_db:
+            self.session.delete(vote_db)
+            self.session.commit()
+            return True
+        return False
+
     def _to_domain(self, model: ReportModel) -> Report:
-        return Report(**model.model_dump(exclude={"category", "status"}), category=CategoryEnum(model.category), status=ReportStatus(model.status))
-    
+        # Extraemos todo EXCEPTO category y status para mapearlos manualmente
+        # y así evitar el error de 'multiple values'
+        data = model.model_dump(exclude={"category", "status"})
+        
+        return Report(
+            **data,
+            category=CategoryEnum(model.category), 
+            status=ReportStatus(model.status),
+            user_vote=0 
+        )

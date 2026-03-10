@@ -167,10 +167,17 @@ class ReportsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateReport(id: Int, title: String?, desc: String?): Result<Report> {
-        return safeApiCall {
-            val request = ReportUpdateRequest(title, desc)
-            api.updateReport(id, request).toDomain()
+    override suspend fun updateReport(id: Int, title: String, desc: String, photoUrl: String?): Result<Report> {
+        return try {
+            val request = ReportUpdateRequest(
+                title = title,
+                description = desc,
+                photoUrl = photoUrl
+            )
+            val response = api.updateReport(id, request)
+            Result.success(response.toDomain())
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

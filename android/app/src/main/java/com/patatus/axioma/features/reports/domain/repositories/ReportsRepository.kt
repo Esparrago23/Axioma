@@ -17,12 +17,10 @@ interface ReportsRepository {
     ): Result<Report>
 
     suspend fun uploadReportPhoto(localUri: String): Result<String>
-
     fun getReportsFeed(query: FeedQuery): Flow<PagingData<Report>>
     suspend fun getReportsMap(lat: Double, long: Double): Result<List<Report>>
     suspend fun getReportDetail(id: Int): Result<Report>
-
-    suspend fun updateReport(id: Int, title: String?, desc: String?): Result<Report>
+    suspend fun updateReport(id: Int, title: String, desc: String, photoUrl: String?): Result<Report>
 
     suspend fun deleteReport(id: Int): Result<Boolean>
 

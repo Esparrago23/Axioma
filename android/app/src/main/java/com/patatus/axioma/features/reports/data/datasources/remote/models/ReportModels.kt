@@ -23,12 +23,15 @@ data class ReportResponse(
     @SerializedName("photo_url") val photoUrl: String?,
     @SerializedName("credibility_score") val credibilityScore: Int,
     val status: String,
-    @SerializedName("created_at") val createdAt: String
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("user_vote") val userVote: Int? = 0,
+    @SerializedName("user_id") val userId: Int
 )
 
 data class ReportUpdateRequest(
     val title: String? = null,
-    val description: String? = null
+    val description: String? = null,
+    @SerializedName("photo_url") val photoUrl: String? = null
 )
 
 data class VoteRequest(
