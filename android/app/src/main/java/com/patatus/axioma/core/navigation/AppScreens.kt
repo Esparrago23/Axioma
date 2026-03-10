@@ -15,6 +15,12 @@ import com.patatus.axioma.features.reports.presentation.viewmodels.ReportDetailV
 import com.patatus.axioma.features.users.presentation.screens.ProfileScreen
 import com.patatus.axioma.features.users.presentation.viewmodels.ProfileViewModel
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+
 class AppScreens(
 
 ) {
@@ -108,6 +114,22 @@ class AppScreens(
             viewModel = viewModel,
             onBack = { navController.popBackStack() }
         )
+    }
+
+    /* ---------------- MAPA (Placeholder) ---------------- */
+    @Composable
+    fun Mapa(navController: NavController) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Pantalla de Mapa en construcción")
+        }
+    }
+
+    /* ---------------- MIS REPORTES (Placeholder) ---------------- */
+    @Composable
+    fun MisReportes(navController: NavController) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Pantalla de Mis Reportes en construcción")
+        }
     }
 
     @Composable
