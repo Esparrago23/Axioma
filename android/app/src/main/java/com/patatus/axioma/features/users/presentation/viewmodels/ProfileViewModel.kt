@@ -22,7 +22,8 @@ class ProfileViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val updateUserProfileUseCase: UpdateUserProfileUseCase,
     private val uploadUserProfilePhotoUseCase: UploadUserProfilePhotoUseCase,
-    private val deleteUserAccountUseCase: DeleteUserAccountUseCase
+    private val deleteUserAccountUseCase: DeleteUserAccountUseCase,
+    private val secureSessionStore: SecureSessionStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileUiState())
@@ -151,7 +152,7 @@ class ProfileViewModel @Inject constructor(
             deleteUserAccountUseCase()
                 .onSuccess {
                     TokenManager.clearToken()
-                    SecureSessionStore.clearRefreshToken()
+                    secureSessionStore.clearRefreshToken() // <-- 2. USAMOS LA INSTANCIA (con s minúscula)
                     _state.update {
                         it.copy(
                             isDeleting = false,

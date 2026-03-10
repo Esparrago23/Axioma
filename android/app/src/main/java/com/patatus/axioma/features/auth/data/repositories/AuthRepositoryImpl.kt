@@ -16,7 +16,8 @@ import retrofit2.HttpException
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
-    private val apiService: AuthApiService
+    private val apiService: AuthApiService,
+    private val secureSessionStore: SecureSessionStore // <-- HILT INYECTA LA DEPENDENCIA AQUÍ
 ) : AuthRepository {
 
     override suspend fun login(email: String, pass: String): Result<User> {
@@ -24,7 +25,7 @@ class AuthRepositoryImpl @Inject constructor(
             try {
                 val response = apiService.login(LoginRequest(email, pass))
                 TokenManager.saveToken(response.accessToken)
-                SecureSessionStore.saveRefreshToken(response.refreshToken)
+                secureSessionStore.saveRefreshToken(response.refreshToken) // Usamos la instancia inyectada
                 Result.success(response.toDomain())
             } catch (e: HttpException) {
                 val errorBody = e.response()?.errorBody()?.string()
@@ -42,7 +43,7 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun quickLoginWithStoredSession(): Result<User> {
         return withContext(Dispatchers.IO) {
-            val storedRefreshToken = SecureSessionStore.getRefreshToken()
+            val storedRefreshToken = secureSessionStore.getRefreshToken()
             if (storedRefreshToken.isNullOrBlank()) {
                 return@withContext Result.failure(Exception("No hay sesion guardada para inicio rapido"))
             }
@@ -56,11 +57,11 @@ class AuthRepositoryImpl @Inject constructor(
                 )
 
                 TokenManager.saveToken(response.accessToken)
-                SecureSessionStore.saveRefreshToken(response.refreshToken)
+                secureSessionStore.saveRefreshToken(response.refreshToken)
                 Result.success(response.toDomain())
             } catch (e: HttpException) {
                 if (e.code() == 401) {
-                    SecureSessionStore.clearRefreshToken()
+                    secureSessionStore.clearRefreshToken()
                     TokenManager.clearToken()
                     return@withContext Result.failure(Exception("Tu sesion rapida expiro. Inicia sesion de nuevo."))
                 }
@@ -79,18 +80,18 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override fun hasStoredQuickSession(): Boolean {
-        return !SecureSessionStore.getRefreshToken().isNullOrBlank()
+        return !secureSessionStore.getRefreshToken().isNullOrBlank()
     }
 
     override suspend fun clearStoredSession() {
         withContext(Dispatchers.IO) {
-            val storedRefreshToken = SecureSessionStore.getRefreshToken()
+            val storedRefreshToken = secureSessionStore.getRefreshToken()
             if (!storedRefreshToken.isNullOrBlank()) {
                 runCatching {
                     apiService.logout(LogoutRequest(storedRefreshToken))
                 }
             }
-            SecureSessionStore.clearRefreshToken()
+            secureSessionStore.clearRefreshToken()
             TokenManager.clearToken()
         }
     }
