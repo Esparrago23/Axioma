@@ -15,18 +15,20 @@ class ReportResponseDTO(BaseModel):
     id: int
     title: str
     description: str
-    category: CategoryEnum
+    category: str
     latitude: float
     longitude: float
-    photo_url: Optional[str] = None 
+    photo_url: Optional[str]
     credibility_score: int
-    status: ReportStatus
+    status: str
     user_id: int
+    user_vote: int = 0
     created_at: datetime
 
 class UpdateReportDTO(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: str
+    description: str
+    photo_url: Optional[str] = None
 
 class VoteDTO(BaseModel):
     vote_value: int

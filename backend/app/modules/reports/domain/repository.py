@@ -7,9 +7,9 @@ class ReportRepository(ABC):
     def save(self, report: Report) -> Report:
         pass
 
-    @abstractmethod
-    def get_by_id(self, id: int) -> Optional[Report]:
-        pass
+    # @abstractmethod
+    # def get_by_id(self, id: int) -> Optional[Report]:
+    #     pass
 
     @abstractmethod
     def get_nearby(
@@ -27,13 +27,16 @@ class ReportRepository(ABC):
         pass
 
     @abstractmethod
-    def delete(self, report_id: int) -> bool:
-        pass
-
-    @abstractmethod
-    def save_vote(self, vote: Vote) -> Vote:
-        pass
+    def get_by_id(self, id: int, current_user_id: Optional[int] = None) -> Optional[Report]: pass
     
     @abstractmethod
-    def get_vote(self, user_id: int, report_id: int) -> Optional[Vote]:
-        pass
+    def delete(self, report_id: int) -> bool: pass
+    
+    @abstractmethod
+    def save_vote(self, vote: Vote) -> Vote: pass
+    
+    @abstractmethod
+    def get_vote(self, user_id: int, report_id: int) -> Optional[Vote]: pass
+    
+    @abstractmethod
+    def delete_vote(self, user_id: int, report_id: int) -> bool: pass # <-- IMPORTANTE

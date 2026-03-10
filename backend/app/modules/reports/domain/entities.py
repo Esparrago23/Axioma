@@ -26,10 +26,10 @@ class Report(BaseModel):
     credibility_score: int = 0
     status: ReportStatus = ReportStatus.ACTIVE
     user_id: int
+    user_vote: int = 0 
     created_at: datetime = datetime.utcnow()
 
     def calculate_reputation(self, vote_value: int):
-        """Regla de Negocio: Actualiza score y oculta si es muy bajo."""
         self.credibility_score += vote_value
         if self.credibility_score <= -5:
             self.status = ReportStatus.HIDDEN
@@ -38,4 +38,4 @@ class Vote(BaseModel):
     id: int | None = None
     user_id: int
     report_id: int
-    vote_value: int  # 1 o -1
+    vote_value: int  # 1, 0 o -1

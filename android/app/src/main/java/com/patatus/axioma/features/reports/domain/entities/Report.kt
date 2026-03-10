@@ -10,5 +10,7 @@ data class Report(
     val photoUrl: String?, // Puede ser nulo
     val credibilityScore: Int,
     val status: String,    // "ACTIVE", "HIDDEN", "SOLVED"
-    val createdAt: String  // Fecha en formato String ISO
+    val createdAt: String,  // Fecha en formato String ISO
+    val authorId: Int,    // Este es el 'user_id' de tu API
+    val userVote: Int = 0, // Esto lo calcularemos o lo recibiremos (1, 0, -1)
 )

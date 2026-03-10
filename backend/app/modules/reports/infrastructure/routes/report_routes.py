@@ -85,18 +85,11 @@ def get_feed(
 @router.get("/{id}")
 def get_report_detail(
     id: int,
-    controller = Depends(get_detail_controller)
+    controller = Depends(get_detail_controller),
+    user = Depends(get_current_user) # <-- Inyectamos el usuario actual
 ):
-    return controller.run(report_id=id)
-
-@router.patch("/{id}")
-def update_report(
-    id: int,
-    data: UpdateReportDTO,
-    controller = Depends(get_update_controller),
-    user = Depends(get_current_user)
-):
-    return controller.run(report_id=id, user_id=user.id, dto=data)
+    # Ahora el controlador ya sabe quién eres
+    return controller.run(report_id=id, user_id=user.id)
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_report(
@@ -114,4 +107,15 @@ def vote_report(
     controller = Depends(get_vote_controller),
     user = Depends(get_current_user)
 ):
+    return controller.run(report_id=id, user_id=user.id, dto=data)
+
+@router.patch("/{id}") # O prueba cambiarlo a .put("/{id}") si el 405 persiste
+def update_report(
+    id: int,
+    data: UpdateReportDTO,
+    controller = Depends(get_update_controller),
+    user = Depends(get_current_user)
+):
+    # Log de debug para ver qué llega (puedes borrarlo después)
+    print(f"Editando reporte {id} por usuario {user.id}")
     return controller.run(report_id=id, user_id=user.id, dto=data)
