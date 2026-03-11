@@ -68,6 +68,10 @@ fun FeedScreen(
     val reports = viewModel.reportsFeed.collectAsLazyPagingItems()
     val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
 
+    LaunchedEffect(Unit) {
+         viewModel.loadUserProfile()
+    }
+
     LaunchedEffect(currentLatitude, currentLongitude, cityRadiusKm) {
         if (currentLatitude != null && currentLongitude != null) {
             viewModel.onLocationUpdated(
