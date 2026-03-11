@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Axioma</string>
+    <string name="mapbox_access_token">MAPBOX_ACCESS_TOKEN</string>
 </resources>

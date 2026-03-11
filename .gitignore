@@ -16,4 +16,5 @@ venv/
 .DS_Store
 Thumbs.db
 
+android/gradle-*.zip
 .venv

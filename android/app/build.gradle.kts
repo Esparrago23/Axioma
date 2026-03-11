@@ -1,15 +1,26 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
+val mapboxToken = localProperties.getProperty("MAPBOX_ACCESS_TOKEN") ?: ""
+
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt.android)
 }
 
 android {
     namespace = "com.patatus.axioma"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.patatus.axioma"
@@ -45,19 +56,37 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".dev"
             resValue("string", "app_name", "Axioma (DEV)")
+            resValue("string", "mapbox_access_token", mapboxToken)
             buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
         }
 
         create("prod") {
             dimension = "environment"
             resValue("string", "app_name", "Axioma Prod")
+            resValue("string", "mapbox_access_token", mapboxToken)
             buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
         }
     }
-
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/LICENSE.md",
+                "META-INF/LICENSE-notice.md",
+                "META-INF/NOTICE.md",
+                "META-INF/NOTICE",
+                "META-INF/LICENSE"
+            )
+        }
+    }
 }
 
 dependencies {
+    implementation("org.glassfish.jaxb:jaxb-runtime:4.0.5")
+    
+    // Maps
+    implementation("com.mapbox.maps:android:11.6.1")
+    implementation("com.mapbox.extension:maps-compose:11.6.0")
+
     // Red y Parsing
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
