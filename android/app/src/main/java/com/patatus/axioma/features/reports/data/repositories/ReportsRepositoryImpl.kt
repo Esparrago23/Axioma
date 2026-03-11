@@ -85,18 +85,40 @@ class ReportsRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val uri = localUri.toUri()
-                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-                val extension = mimeType.substringAfter('/', "jpg")
-                val tempFile = File.createTempFile("report_upload_", ".${extension}", context.cacheDir)
+                val tempFile = File.createTempFile("report_upload_", ".jpg", context.cacheDir)
 
-                context.contentResolver.openInputStream(uri).use { input ->
-                    if (input == null) {
-                        return@withContext Result.failure(Exception("No se pudo leer la imagen seleccionada"))
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    val originalBitmap = android.graphics.BitmapFactory.decodeStream(input)
+                        ?: return@withContext Result.failure(Exception("No se pudo leer la imagen"))
+
+                    val maxSize = 1080
+                    val ratio = kotlin.math.min(
+                        maxSize.toFloat() / originalBitmap.width,
+                        maxSize.toFloat() / originalBitmap.height
+                    )
+
+                    val scaledBitmap = if (ratio < 1f) {
+                        android.graphics.Bitmap.createScaledBitmap(
+                            originalBitmap,
+                            (originalBitmap.width * ratio).toInt(),
+                            (originalBitmap.height * ratio).toInt(),
+                            true
+                        )
+                    } else {
+                        originalBitmap
                     }
-                    tempFile.outputStream().use { output -> input.copyTo(output) }
+
+                    tempFile.outputStream().use { output ->
+                        scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, output)
+                    }
+
+                    if (scaledBitmap != originalBitmap) {
+                        scaledBitmap.recycle()
+                    }
+                    originalBitmap.recycle()
                 }
 
-                val body = tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
+                val body = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
                 val part = MultipartBody.Part.createFormData("photo", tempFile.name, body)
                 val response = api.uploadReportPhoto(part)
                 tempFile.delete()
