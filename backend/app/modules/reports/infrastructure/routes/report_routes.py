@@ -10,12 +10,12 @@ from app.modules.reports.infrastructure.dependencies import (
     get_create_controller,
     get_feed_controller,
     get_detail_controller,
+    get_my_reports_controller,
     get_update_controller,
     get_delete_controller,
     get_vote_controller,
     get_all_controller
 )
-
 
 from app.modules.auth.infrastructure.dependencies import get_current_user
 
@@ -82,13 +82,22 @@ def get_feed(
         limit=limit
     )
 
+# ⭐ RUTA ESPECÍFICA (Debe ir antes de la ruta con {id})
+@router.get("/me/created", response_model=List[ReportResponseDTO])
+def get_my_reports(
+    search: str = Query(None, description="Buscar por título"),
+    controller = Depends(get_my_reports_controller),
+    user = Depends(get_current_user)
+):
+    return controller.run(user_id=user.id, search=search)
+
+# ⭐ RUTA DINÁMICA
 @router.get("/{id}")
 def get_report_detail(
     id: int,
     controller = Depends(get_detail_controller),
-    user = Depends(get_current_user) # <-- Inyectamos el usuario actual
+    user = Depends(get_current_user) 
 ):
-    # Ahora el controlador ya sabe quién eres
     return controller.run(report_id=id, user_id=user.id)
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -109,13 +118,12 @@ def vote_report(
 ):
     return controller.run(report_id=id, user_id=user.id, dto=data)
 
-@router.patch("/{id}") # O prueba cambiarlo a .put("/{id}") si el 405 persiste
+@router.patch("/{id}") 
 def update_report(
     id: int,
     data: UpdateReportDTO,
     controller = Depends(get_update_controller),
     user = Depends(get_current_user)
 ):
-    # Log de debug para ver qué llega (puedes borrarlo después)
     print(f"Editando reporte {id} por usuario {user.id}")
     return controller.run(report_id=id, user_id=user.id, dto=data)

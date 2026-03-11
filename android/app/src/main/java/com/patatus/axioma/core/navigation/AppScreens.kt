@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.patatus.axioma.features.reports.presentation.ui.MyReportsScreen
 
 class AppScreens(
 
@@ -127,9 +128,11 @@ class AppScreens(
     /* ---------------- MIS REPORTES (Placeholder) ---------------- */
     @Composable
     fun MisReportes(navController: NavController) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Pantalla de Mis Reportes en construcción")
-        }
+        MyReportsScreen(
+            onReportClick = { reportId ->
+                navController.navigate("report_detail/$reportId")
+            }
+        )
     }
 
     @Composable

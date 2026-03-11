@@ -250,7 +250,7 @@ fun LoginScreen(
                 Button(
                     onClick = {
                         if (activity == null) {
-                            viewModel.onBiometricPromptError("No se pudo iniciar el prompt biometrico")
+                            viewModel.onBiometricPromptError("No se pudo iniciar la deteccion de huellas")
                             return@Button
                         }
 
@@ -271,7 +271,7 @@ fun LoginScreen(
                         contentDescription = null,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Inicio rapido con huella/rostro")
+                    Text("Inicio rapido con huella")
                 }
             }
 

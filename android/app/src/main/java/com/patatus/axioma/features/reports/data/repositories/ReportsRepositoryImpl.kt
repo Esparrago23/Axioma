@@ -168,16 +168,13 @@ class ReportsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateReport(id: Int, title: String, desc: String, photoUrl: String?): Result<Report> {
-        return try {
+        return safeApiCall {
             val request = ReportUpdateRequest(
                 title = title,
                 description = desc,
                 photoUrl = photoUrl
             )
-            val response = api.updateReport(id, request)
-            Result.success(response.toDomain())
-        } catch (e: Exception) {
-            Result.failure(e)
+            api.updateReport(id, request).toDomain()
         }
     }
 
@@ -204,6 +201,12 @@ class ReportsRepositoryImpl @Inject constructor(
             val voteInt = if (isUpvote) 1 else -1
 
             api.voteReport(id, VoteRequest(voteInt))
+        }
+    }
+
+    override suspend fun getMyReports(search: String?): Result<List<Report>> {
+        return safeApiCall {
+            api.getMyReports(search).map { it.toDomain() }
         }
     }
 

@@ -21,8 +21,7 @@ interface ReportsRepository {
     suspend fun getReportsMap(lat: Double, long: Double): Result<List<Report>>
     suspend fun getReportDetail(id: Int): Result<Report>
     suspend fun updateReport(id: Int, title: String, desc: String, photoUrl: String?): Result<Report>
-
     suspend fun deleteReport(id: Int): Result<Boolean>
-
     suspend fun voteReport(id: Int, isUpvote: Boolean): Result<VoteResponse>
+    suspend fun getMyReports(search: String? = null): Result<List<Report>>
 }

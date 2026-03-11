@@ -8,24 +8,49 @@ import com.patatus.axioma.features.reports.domain.entities.FeedQuery
 import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.domain.usecases.GetReportsFeedUseCase
+import com.patatus.axioma.features.users.domain.entities.User
+import com.patatus.axioma.features.users.domain.usecases.GetUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class FeedViewModel @Inject constructor(
-    private val getReportsFeedUseCase: GetReportsFeedUseCase
+    private val getReportsFeedUseCase: GetReportsFeedUseCase,
+    private val getUserProfileUseCase: GetUserProfileUseCase
 ) : ViewModel() {
 
+    private val _userProfile = MutableStateFlow<User?>(null)
+    val userProfile: StateFlow<User?> = _userProfile.asStateFlow()
+
+    // --- Estado del Feed ---
     private val _feedQuery = MutableStateFlow(FeedQuery())
     val feedQuery = _feedQuery.asStateFlow()
 
     val reportsFeed: Flow<PagingData<Report>> = _feedQuery
         .flatMapLatest { query -> getReportsFeedUseCase(query) }
         .cachedIn(viewModelScope)
+
+    init {
+        loadUserProfile()
+    }
+
+    private fun loadUserProfile() {
+        viewModelScope.launch {
+            getUserProfileUseCase()
+                .onSuccess { profile ->
+                    _userProfile.value = profile
+                }
+                .onFailure {
+                    _userProfile.value = null
+                }
+        }
+    }
 
     fun onSortSelected(sort: FeedSort) {
         _feedQuery.value = _feedQuery.value.copy(sort = sort)
