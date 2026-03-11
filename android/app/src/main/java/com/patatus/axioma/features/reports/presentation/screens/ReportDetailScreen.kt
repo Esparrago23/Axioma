@@ -172,7 +172,7 @@ fun ReportDetailContent(
         val rawUrl = report.photoUrl ?: ""
         when {
             rawUrl.isBlank() -> ""
-            rawUrl.startsWith("http") -> rawUrl.replace("localhost", "10.0.2.2")
+            rawUrl.startsWith("http") -> rawUrl
             else -> "${BuildConfig.BASE_URL_API.removeSuffix("/")}/${rawUrl.removePrefix("/")}"
         }
     }
@@ -284,7 +284,7 @@ fun EditReportDialog(
                 if (!shouldDeleteCurrentPhoto && (localPhotoUri != null || report.photoUrl != null)) {
                     Box(modifier = Modifier.fillMaxWidth().height(150.dp)) {
                         AsyncImage(
-                            model = localPhotoUri ?: report.photoUrl?.replace("localhost", "10.0.2.2"),
+                            model = localPhotoUri ?: report.photoUrl,
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
                             contentScale = ContentScale.Crop
