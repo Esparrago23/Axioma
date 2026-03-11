@@ -58,27 +58,20 @@ android {
             applicationIdSuffix = ".dev"
             resValue("string", "app_name", "Axioma (DEV)")
 
-            buildConfigField(
-                "String",
-                "MAPBOX_ACCESS_TOKEN",
-                "\"$mapboxToken\""
-            )
+            resValue("string", "mapbox_access_token", mapboxToken)
 
             buildConfigField(
                 "String",
                 "BASE_URL_API",
-                "\"http://192.168.1.248:8000\"")
+                "\"https://esparrago.engineer/\"")
         }
 
         create("prod") {
             dimension = "environment"
             resValue("string", "app_name", "Axioma Prod")
-            buildConfigField(
-                "String",
-                "MAPBOX_ACCESS_TOKEN",
-                "\"$mapboxToken\""
-            )
-            buildConfigField("String", "BASE_URL_API", "\"http://192.168.1.248:8000\"")
+            resValue("string", "mapbox_access_token", mapboxToken)
+
+            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
         }
     }
     packaging {
