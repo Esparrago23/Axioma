@@ -12,13 +12,16 @@ import com.patatus.axioma.core.database.AxiomaDatabase
 import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
 import com.patatus.axioma.features.reports.data.datasources.remote.mediator.ReportRemoteMediator
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toDomain
+import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toEntity
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
+import com.patatus.axioma.features.reports.data.realtime.ReportsRealtimeWebSocketDataSource
 import com.patatus.axioma.features.reports.domain.entities.FeedQuery
 import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -37,8 +40,11 @@ import javax.inject.Inject
 class ReportsRepositoryImpl @Inject constructor(
     private val api: ReportsApiService,
     private val database: AxiomaDatabase,
+    private val realtimeDataSource: ReportsRealtimeWebSocketDataSource,
     @ApplicationContext private val context: Context
 ) : ReportsRepository {
+
+    private val reportDao = database.reportDao()
 
     override suspend fun createReport(
         title: String,
@@ -204,6 +210,31 @@ class ReportsRepositoryImpl @Inject constructor(
             val voteInt = if (isUpvote) 1 else -1
 
             api.voteReport(id, VoteRequest(voteInt))
+        }
+    }
+
+    override fun observeRealtimeEvents(): Flow<ReportRealtimeEvent> {
+        return realtimeDataSource.observeEvents()
+    }
+
+    override suspend fun applyRealtimeEvent(event: ReportRealtimeEvent) {
+        withContext(Dispatchers.IO) {
+            when (event) {
+                is ReportRealtimeEvent.NewReport -> {
+                    val existingReport = reportDao.getById(event.report.id)
+                    reportDao.insert(
+                        event.report.toEntity(userVote = existingReport?.userVote ?: 0)
+                    )
+                }
+
+                is ReportRealtimeEvent.VoteUpdate -> {
+                    reportDao.updateRealtimeVote(
+                        reportId = event.reportId,
+                        credibilityScore = event.credibilityScore,
+                        status = event.status
+                    )
+                }
+            }
         }
     }
 

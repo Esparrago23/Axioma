@@ -3,6 +3,7 @@ package com.patatus.axioma.core.di
 import com.patatus.axioma.BuildConfig
 import com.patatus.axioma.core.config.AppConfig
 import com.patatus.axioma.core.network.TokenManager
+import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,6 +21,10 @@ import javax.inject.Singleton
 object NetworkModule {
     @Provides
     @Singleton
+    fun provideGson(): Gson = Gson()
+
+    @Provides
+    @Singleton
     fun provideAuthInterceptor(): Interceptor {
         return Interceptor { chain ->
             val request = chain.request().newBuilder()
@@ -30,6 +35,7 @@ object NetworkModule {
             chain.proceed(request.build())
         }
     }
+
     @Provides
     @Singleton
     fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
@@ -40,14 +46,29 @@ object NetworkModule {
             .writeTimeout(AppConfig.network.writeTimeoutSeconds, TimeUnit.SECONDS)
             .build()
     }
+
+    @Provides
+    @Singleton
+    @WebSocketOkHttp
+    fun provideWebSocketOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
+            .connectTimeout(AppConfig.network.connectTimeoutSeconds, TimeUnit.SECONDS)
+            .readTimeout(0, TimeUnit.SECONDS)
+            .writeTimeout(AppConfig.network.writeTimeoutSeconds, TimeUnit.SECONDS)
+            .pingInterval(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
     @Provides
     @Singleton
     @ApiRetrofit
-    fun provideApiRetrofit(okHttpClient: OkHttpClient): Retrofit {
+    fun provideApiRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
             .baseUrl(BuildConfig.BASE_URL_API)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
 }

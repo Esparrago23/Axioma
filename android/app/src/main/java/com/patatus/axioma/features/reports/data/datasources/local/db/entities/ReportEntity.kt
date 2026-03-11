@@ -16,5 +16,6 @@ data class ReportEntity(
     @ColumnInfo(name = "credibility_score") val credibilityScore: Int,
     val status: String,
     @ColumnInfo(name = "user_id") val userId: Int,
-    @ColumnInfo(name = "created_at") val createdAt: String
+    @ColumnInfo(name = "created_at") val createdAt: String,
+    @ColumnInfo(name = "user_vote") val userVote: Int
 )

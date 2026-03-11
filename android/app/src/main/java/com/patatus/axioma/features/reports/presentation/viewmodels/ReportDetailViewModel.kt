@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import com.patatus.axioma.features.reports.domain.usecases.*
 import com.patatus.axioma.features.users.domain.usecases.GetUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,13 +27,23 @@ class ReportDetailViewModel @Inject constructor(
     private val deleteReportUseCase: DeleteReportUseCase,
     private val updateReportUseCase: UpdateReportUseCase,
     private val getUserProfileUseCase: GetUserProfileUseCase,
-    private val uploadReportPhotoUseCase: UploadReportPhotoUseCase
+    private val uploadReportPhotoUseCase: UploadReportPhotoUseCase,
+    private val observeReportRealtimeEventsUseCase: ObserveReportRealtimeEventsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
     val uiState = _uiState.asStateFlow()
 
+    private var currentReportId: Int? = null
+
+    init {
+        viewModelScope.launch {
+            observeReportRealtimeEventsUseCase().collect(::handleRealtimeEvent)
+        }
+    }
+
     fun loadReport(id: Int) {
+        currentReportId = id
         viewModelScope.launch {
             _uiState.value = DetailUiState.Loading
             val reportResult = getReportDetailUseCase(id)
@@ -105,6 +116,37 @@ class ReportDetailViewModel @Inject constructor(
             deleteReportUseCase(id)
                 .onSuccess { _uiState.value = DetailUiState.Deleted }
                 .onFailure { _uiState.value = DetailUiState.Error(it.message ?: "Error al borrar") }
+        }
+    }
+
+    private fun handleRealtimeEvent(event: ReportRealtimeEvent) {
+        val state = _uiState.value as? DetailUiState.Success ?: return
+        val reportId = currentReportId ?: return
+        if (state.report.id != reportId) {
+            return
+        }
+
+        when (event) {
+            is ReportRealtimeEvent.NewReport -> {
+                if (event.report.id != reportId) {
+                    return
+                }
+                _uiState.value = state.copy(
+                    report = event.report.copy(userVote = state.report.userVote)
+                )
+            }
+
+            is ReportRealtimeEvent.VoteUpdate -> {
+                if (event.reportId != reportId) {
+                    return
+                }
+                _uiState.value = state.copy(
+                    report = state.report.copy(
+                        credibilityScore = event.credibilityScore,
+                        status = event.status
+                    )
+                )
+            }
         }
     }
 }

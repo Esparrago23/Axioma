@@ -4,6 +4,7 @@ import androidx.paging.PagingData
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
 import com.patatus.axioma.features.reports.domain.entities.FeedQuery
 import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import kotlinx.coroutines.flow.Flow
 
 interface ReportsRepository {
@@ -25,4 +26,8 @@ interface ReportsRepository {
     suspend fun deleteReport(id: Int): Result<Boolean>
 
     suspend fun voteReport(id: Int, isUpvote: Boolean): Result<VoteResponse>
+
+    fun observeRealtimeEvents(): Flow<ReportRealtimeEvent>
+
+    suspend fun applyRealtimeEvent(event: ReportRealtimeEvent)
 }

@@ -34,36 +34,37 @@ def get_login_controller(uc = Depends(get_login_uc)): return LoginController(uc)
 def get_refresh_controller(uc = Depends(get_refresh_uc)): return RefreshSessionController(uc)
 def get_logout_controller(uc = Depends(get_logout_uc)): return LogoutSessionController(uc)
 
-def get_current_user(
-    token_auth: HTTPAuthorizationCredentials = Depends(security), 
-    repo: SQLUserRepository = Depends(get_auth_repo)
-) -> User:
+
+def get_user_from_access_token(token: str, repo: SQLUserRepository) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No se pudieron validar las credenciales",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
-    try:
-        token = token_auth.credentials 
 
+    try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         if payload.get("type") != "access":
             raise credentials_exception
+
         user_id_str: str = payload.get("sub")
-        
         if user_id_str is None:
             raise credentials_exception
-            
+
         user_id = int(user_id_str)
-        
     except (JWTError, ValueError):
         raise credentials_exception
-    
+
     user = repo.get_by_id(user_id)
     if user is None:
         raise credentials_exception
-        
+
     return user
+
+def get_current_user(
+    token_auth: HTTPAuthorizationCredentials = Depends(security), 
+    repo: SQLUserRepository = Depends(get_auth_repo)
+) -> User:
+    return get_user_from_access_token(token_auth.credentials, repo)
 
 UserDep = Annotated[User, Depends(get_current_user)]

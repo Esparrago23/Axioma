@@ -2,6 +2,8 @@ package com.patatus.axioma.core.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.patatus.axioma.BuildConfig
 import com.patatus.axioma.core.database.AxiomaDatabase
 import com.patatus.axioma.features.reports.data.datasources.local.db.daos.ReportDao
@@ -17,6 +19,12 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val migration1To2 = object : Migration(1, 2) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("ALTER TABLE reports ADD COLUMN user_vote INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAxiomaDatabase(
@@ -26,7 +34,7 @@ object DatabaseModule {
             context,
             AxiomaDatabase::class.java,
             "axioma_database"
-        )
+        ).addMigrations(migration1To2)
 
         return if (BuildConfig.DEBUG) {
             builder.fallbackToDestructiveMigration().build()
