@@ -26,13 +26,13 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -44,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -63,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -79,13 +81,16 @@ fun ProfileScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackState = remember { SnackbarHostState() }
+
     var editMode by rememberSaveable { mutableStateOf(ProfileEditMode.NONE.name) }
-    val isDataEditing = editMode == ProfileEditMode.DATA.name
     val isPhotoEditing = editMode == ProfileEditMode.PHOTO.name
 
+    // Estados para modales
+    var showEditDataDialog by rememberSaveable { mutableStateOf(false) }
     var showPhotoSourceSheet by rememberSaveable { mutableStateOf(false) }
     var showCameraRationaleDialog by rememberSaveable { mutableStateOf(false) }
     var pendingCameraLaunch by rememberSaveable { mutableStateOf(false) }
+    var showDeleteConfirmationDialog by rememberSaveable { mutableStateOf(false) }
 
     val brandColor = Color(0xFF64B6AB)
 
@@ -123,6 +128,7 @@ fun ProfileScreen(
         }
     }
 
+    // Modal de Foto de Perfil
     if (showPhotoSourceSheet) {
         ModalBottomSheet(
             onDismissRequest = { showPhotoSourceSheet = false }
@@ -142,7 +148,7 @@ fun ProfileScreen(
 
                 PhotoSourceItem(
                     icon = Icons.Outlined.CameraAlt,
-                    title = "Camara",
+                    title = "Cámara",
                     onClick = {
                         showPhotoSourceSheet = false
                         editMode = ProfileEditMode.PHOTO.name
@@ -161,7 +167,7 @@ fun ProfileScreen(
 
                 PhotoSourceItem(
                     icon = Icons.Outlined.Image,
-                    title = "Galeria",
+                    title = "Galería",
                     onClick = {
                         showPhotoSourceSheet = false
                         editMode = ProfileEditMode.PHOTO.name
@@ -173,11 +179,12 @@ fun ProfileScreen(
         }
     }
 
+    // Modal de permisos de cámara
     if (showCameraRationaleDialog) {
         AlertDialog(
             onDismissRequest = { showCameraRationaleDialog = false },
-            title = { Text("Permiso de camara") },
-            text = { Text("Necesitamos acceso a la camara para tomar la foto de perfil.") },
+            title = { Text("Permiso de cámara") },
+            text = { Text("Necesitamos acceso a la cámara para tomar la foto de perfil.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -194,6 +201,104 @@ fun ProfileScreen(
                         pendingCameraLaunch = false
                         showCameraRationaleDialog = false
                     }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    // Modal para Editar Datos (Evita empujar el contenido hacia abajo)
+    if (showEditDataDialog) {
+        Dialog(onDismissRequest = { showEditDataDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Editar Perfil",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = brandColor
+                    )
+
+                    OutlinedTextField(
+                        value = state.usernameInput,
+                        onValueChange = viewModel::onUsernameChanged,
+                        label = { Text("Nombre de Usuario") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = state.fullNameInput,
+                        onValueChange = viewModel::onFullNameChanged,
+                        label = { Text("Nombre Completo") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = { showEditDataDialog = false }
+                        ) {
+                            Text("Cancelar")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                viewModel.saveProfileDataChanges()
+                                showEditDataDialog = false
+                            },
+                            enabled = !state.isSaving
+                        ) {
+                            Text(if (state.isSaving) "Guardando..." else "Guardar")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Modal de Confirmación para Eliminar Cuenta
+    if (showDeleteConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmationDialog = false },
+            title = {
+                Text(
+                    text = "¿Eliminar cuenta?",
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("Esta acción es irreversible. Se perderán todos tus datos, reportes y reputación en Axioma. ¿Estás completamente seguro de que deseas eliminar tu cuenta?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirmationDialog = false
+                        viewModel.deleteAccount()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Sí, eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirmationDialog = false }
                 ) {
                     Text("Cancelar")
                 }
@@ -222,6 +327,7 @@ fun ProfileScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // Cabecera superior
             Box(modifier = Modifier.fillMaxWidth()) {
                 IconButton(onClick = onBack) {
                     Icon(
@@ -242,6 +348,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(6.dp))
 
+            // Avatar
             AsyncImage(
                 model = state.profilePictureUrlInput.ifBlank { null },
                 contentDescription = "Avatar de usuario",
@@ -265,6 +372,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            // Información del perfil
             ProfileInfoRow(
                 icon = Icons.Outlined.AlternateEmail,
                 title = "Nombre de Usuario",
@@ -277,7 +385,7 @@ fun ProfileScreen(
             )
             ProfileInfoRow(
                 icon = Icons.Outlined.StarOutline,
-                title = "Reputacion",
+                title = "Reputación",
                 value = "${state.user?.reputation ?: 0} puntos de 10"
             )
             ProfileInfoRow(
@@ -292,56 +400,14 @@ fun ProfileScreen(
                 value = formatMemberSince(state.user?.createdAt)
             )
             ProfileInfoRow(
-                icon = Icons.Outlined.ErrorOutline,
+                icon = Icons.Outlined.Edit,
                 title = "Editar Datos",
                 value = "",
                 clickable = true,
-                onClick = { editMode = ProfileEditMode.DATA.name }
+                onClick = { showEditDataDialog = true } // Abre el modal de edición
             )
 
-            if (isDataEditing) {
-                Spacer(modifier = Modifier.height(4.dp))
-
-                OutlinedTextField(
-                    value = state.usernameInput,
-                    onValueChange = viewModel::onUsernameChanged,
-                    label = { Text("Username") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = state.fullNameInput,
-                    onValueChange = viewModel::onFullNameChanged,
-                    label = { Text("Nombre completo") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            viewModel.saveProfileDataChanges()
-                            editMode = ProfileEditMode.NONE.name
-                        },
-                        enabled = !state.isSaving && !state.isDeleting,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (state.isSaving) "Guardando..." else "Guardar")
-                    }
-
-                    TextButton(
-                        onClick = { editMode = ProfileEditMode.NONE.name },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Cancelar")
-                    }
-                }
-            }
-
+            // Confirmación de foto editada (Se mantiene aquí por si cambió su avatar)
             if (isPhotoEditing) {
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -375,16 +441,24 @@ fun ProfileScreen(
                 }
             }
 
+            // Botón de eliminar cuenta
             TextButton(
-                onClick = viewModel::deleteAccount,
+                onClick = { showDeleteConfirmationDialog = true },
                 enabled = !state.isSaving && !state.isDeleting,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (state.isDeleting) "Eliminando..." else "Eliminar cuenta")
+                Text(
+                    text = if (state.isDeleting) "Eliminando..." else "Eliminar cuenta",
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
 }
+
+// ======================================================================
+// FUNCIONES Y COMPONENTES PRIVADOS (NO BORRAR)
+// ======================================================================
 
 @Composable
 private fun PhotoSourceItem(

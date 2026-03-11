@@ -48,6 +48,9 @@ fun ReportDetailScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
 
+    // Estado para controlar el menú de los 3 puntitos
+    var menuExpanded by remember { mutableStateOf(false) }
+
     LaunchedEffect(uiState) {
         if (uiState is DetailUiState.Deleted) {
             Toast.makeText(context, "Reporte eliminado", Toast.LENGTH_SHORT).show()
@@ -62,6 +65,36 @@ fun ReportDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                    }
+                },
+                actions = {
+                    // ⭐ LÓGICA DE LOS 3 PUNTITOS: Solo si cargo con éxito y soy el dueño
+                    val state = uiState
+                    if (state is DetailUiState.Success && state.report.authorId == state.currentUserId) {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Editar") },
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    showEditDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Eliminar", color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    menuExpanded = false
+                                    showDeleteConfirmation = true
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -86,12 +119,11 @@ fun ReportDetailScreen(
                     }
                 }
                 is DetailUiState.Success -> {
+                    // Ya no pasamos los callbacks de edit/delete aquí abajo
                     ReportDetailContent(
                         report = state.report,
                         currentUserId = state.currentUserId,
-                        onVote = { isUpvote -> viewModel.toggleVote(isUpvote) },
-                        onEditClick = { showEditDialog = true },
-                        onDeleteClick = { showDeleteConfirmation = true }
+                        onVote = { isUpvote -> viewModel.toggleVote(isUpvote) }
                     )
 
                     if (showEditDialog) {
@@ -132,12 +164,9 @@ fun ReportDetailScreen(
 fun ReportDetailContent(
     report: Report,
     currentUserId: Int,
-    onVote: (Boolean) -> Unit,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onVote: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
-    val isOwner = report.authorId == currentUserId
 
     val fullImageUrl = remember(report.photoUrl) {
         val rawUrl = report.photoUrl ?: ""
@@ -216,29 +245,7 @@ fun ReportDetailContent(
             }
         }
 
-        if (isOwner) {
-            Spacer(modifier = Modifier.height(32.dp))
-            Divider()
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Gestión de mi reporte", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedButton(onClick = onEditClick, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Edit, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Editar")
-                }
-                OutlinedButton(
-                    onClick = onDeleteClick,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Icon(Icons.Default.Delete, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Borrar")
-                }
-            }
-        }
+        // ⭐ La sección "Gestión de mi reporte" fue eliminada de aquí
     }
 }
 

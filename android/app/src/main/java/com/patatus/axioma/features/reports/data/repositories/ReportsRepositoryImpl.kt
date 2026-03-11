@@ -174,16 +174,13 @@ class ReportsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateReport(id: Int, title: String, desc: String, photoUrl: String?): Result<Report> {
-        return try {
+        return safeApiCall {
             val request = ReportUpdateRequest(
                 title = title,
                 description = desc,
                 photoUrl = photoUrl
             )
-            val response = api.updateReport(id, request)
-            Result.success(response.toDomain())
-        } catch (e: Exception) {
-            Result.failure(e)
+            api.updateReport(id, request).toDomain()
         }
     }
 
@@ -205,50 +202,56 @@ class ReportsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun voteReport(id: Int, isUpvote: Boolean): Result<VoteResponse> {
-        return safeApiCall {
-            val voteInt = if (isUpvote) 1 else -1
+override suspend fun voteReport(id: Int, isUpvote: Boolean): Result<VoteResponse> {
+        return safeApiCall {
+            val voteInt = if (isUpvote) 1 else -1
 
-            api.voteReport(id, VoteRequest(voteInt))
-        }
-    }
+            api.voteReport(id, VoteRequest(voteInt))
+        }
+    }
 
-    override fun observeRealtimeEvents(): Flow<ReportRealtimeEvent> {
-        return realtimeDataSource.observeEvents()
-    }
+    override suspend fun getMyReports(search: String?): Result<List<Report>> {
+        return safeApiCall {
+            api.getMyReports(search).map { it.toDomain() }
+        }
+    }
 
-    override suspend fun applyRealtimeEvent(event: ReportRealtimeEvent) {
-        withContext(Dispatchers.IO) {
-            when (event) {
-                is ReportRealtimeEvent.NewReport -> {
-                    val existingReport = reportDao.getById(event.report.id)
-                    reportDao.insert(
-                        event.report.toEntity(userVote = existingReport?.userVote ?: 0)
-                    )
-                }
+    override fun observeRealtimeEvents(): Flow<ReportRealtimeEvent> {
+        return realtimeDataSource.observeEvents()
+    }
 
-                is ReportRealtimeEvent.VoteUpdate -> {
-                    reportDao.updateRealtimeVote(
-                        reportId = event.reportId,
-                        credibilityScore = event.credibilityScore,
-                        status = event.status
-                    )
-                }
-            }
-        }
-    }
+    override suspend fun applyRealtimeEvent(event: ReportRealtimeEvent) {
+        withContext(Dispatchers.IO) {
+            when (event) {
+                is ReportRealtimeEvent.NewReport -> {
+                    val existingReport = reportDao.getById(event.report.id)
+                    reportDao.insert(
+                        event.report.toEntity(userVote = existingReport?.userVote ?: 0)
+                    )
+                }
 
-    private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
-        return withContext(Dispatchers.IO) {
-            try {
-                Result.success(apiCall())
-            } catch (e: HttpException) {
-                val errorBody = e.response()?.errorBody()?.string()
-                val msg = try { JSONObject(errorBody).getString("detail") } catch (ex: Exception) { "Error del servidor" }
-                Result.failure(Exception(msg))
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
-    }
+                is ReportRealtimeEvent.VoteUpdate -> {
+                    reportDao.updateRealtimeVote(
+                        reportId = event.reportId,
+                        credibilityScore = event.credibilityScore,
+                        status = event.status
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Result.success(apiCall())
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val msg = try { JSONObject(errorBody).getString("detail") } catch (ex: Exception) { "Error del servidor" }
+                Result.failure(Exception(msg))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
 }

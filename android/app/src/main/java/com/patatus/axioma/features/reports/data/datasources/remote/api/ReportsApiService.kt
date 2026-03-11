@@ -61,4 +61,10 @@ interface ReportsApiService {
         @Path("id") id: Int,
         @Body vote: VoteRequest
     ): VoteResponse
+
+    @GET("reports/me/created")
+    suspend fun getMyReports(
+        @Query("search") search: String? = null
+    ): List<ReportResponse>
+
 }

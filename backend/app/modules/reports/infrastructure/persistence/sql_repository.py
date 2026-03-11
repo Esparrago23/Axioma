@@ -137,6 +137,21 @@ class SQLReportRepository(ReportRepository):
             self.session.commit()
             return True
         return False
+    
+    # Añade esto dentro de SQLReportRepository
+    def get_by_user(self, user_id: int, search: Optional[str] = None) -> List[Report]:
+        # Filtramos solo los del usuario activo (no importa si están HIDDEN)
+        statement = select(ReportModel).where(ReportModel.user_id == user_id)
+        
+        # Si el usuario escribió algo en el buscador, filtramos por título
+        if search:
+            statement = statement.where(ReportModel.title.ilike(f"%{search}%"))
+            
+        # Ordenamos por los más recientes
+        statement = statement.order_by(desc(ReportModel.created_at))
+        
+        results = self.session.exec(statement).all()
+        return [self._to_domain(r) for r in results]
 
     def _to_domain(self, model: ReportModel) -> Report:
         # Extraemos todo EXCEPTO category y status para mapearlos manualmente
