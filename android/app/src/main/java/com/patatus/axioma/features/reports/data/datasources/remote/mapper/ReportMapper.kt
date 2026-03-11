@@ -32,8 +32,9 @@ fun ReportResponse.toEntity(): ReportEntity {
         photoUrl = this.photoUrl,
         credibilityScore = this.credibilityScore,
         status = this.status,
-        userId = 0,
-        createdAt = this.createdAt
+        userId = this.userId,
+        createdAt = this.createdAt,
+        userVote = this.userVote ?: 0
     )
 }
 
@@ -49,7 +50,24 @@ fun ReportEntity.toDomain(): Report {
         credibilityScore = this.credibilityScore,
         status = this.status,
         createdAt = this.createdAt,
-        authorId = 0,
-        userVote = 0
+        authorId = this.userId,
+        userVote = this.userVote
+    )
+}
+
+fun Report.toEntity(userVote: Int = this.userVote): ReportEntity {
+    return ReportEntity(
+        id = this.id,
+        title = this.title,
+        description = this.description,
+        category = this.category,
+        latitude = this.latitude,
+        longitude = this.longitude,
+        photoUrl = this.photoUrl,
+        credibilityScore = this.credibilityScore,
+        status = this.status,
+        userId = this.authorId,
+        createdAt = this.createdAt,
+        userVote = userVote
     )
 }
