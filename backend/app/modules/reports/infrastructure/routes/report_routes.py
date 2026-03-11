@@ -28,6 +28,8 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 
 
 def _build_report_payload(report) -> dict:
+    if hasattr(report, "model_dump"):
+        return report.model_dump(mode="json")
     return ReportResponseDTO.model_validate(report).model_dump(mode="json")
 
 
