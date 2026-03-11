@@ -1,6 +1,8 @@
+import asyncio
 from uuid import uuid4
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Response, UploadFile, WebSocket, WebSocketDisconnect, status
 from typing import List
+from starlette.websockets import WebSocketState
 
 from app.modules.reports.infrastructure.dtos import CreateReportDTO, ReportPhotoUploadResponseDTO, ReportResponseDTO, UpdateReportDTO, VoteDTO
 from app.core.storage.dependencies import get_storage_repository
@@ -10,16 +12,35 @@ from app.modules.reports.infrastructure.dependencies import (
     get_create_controller,
     get_feed_controller,
     get_detail_controller,
+    get_my_reports_controller,
     get_update_controller,
     get_delete_controller,
     get_vote_controller,
-    get_all_controller
+    get_all_controller,
+    get_reports_repo,
 )
 
-
-from app.modules.auth.infrastructure.dependencies import get_current_user
+from app.modules.auth.infrastructure.dependencies import get_auth_repo, get_current_user, get_user_from_access_token
+from app.modules.auth.infrastructure.persistence.sql_repository import SQLUserRepository
+from app.modules.reports.infrastructure.realtime import ReportRealtimeEvent, reports_realtime_broker
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
+
+
+def _build_report_payload(report) -> dict:
+    if hasattr(report, "model_dump"):
+        return report.model_dump(mode="json")
+    return ReportResponseDTO.model_validate(report).model_dump(mode="json")
+
+
+def _extract_websocket_token(websocket: WebSocket) -> str | None:
+    authorization = websocket.headers.get("authorization")
+    if authorization:
+        scheme, _, credentials = authorization.partition(" ")
+        if scheme.lower() == "bearer" and credentials:
+            return credentials
+
+    return websocket.query_params.get("token")
 
 @router.get("/all", response_model=List[ReportResponseDTO])
 def get_all_reports(
@@ -32,10 +53,17 @@ def get_all_reports(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_report(
     data: CreateReportDTO,
+    background_tasks: BackgroundTasks,
     controller = Depends(get_create_controller),
     user = Depends(get_current_user)
 ):
-    return controller.run(dto=data, user_id=user.id)
+    report = controller.run(dto=data, user_id=user.id)
+    background_tasks.add_task(
+        reports_realtime_broker.publish,
+        ReportRealtimeEvent.NEW_REPORT,
+        {"report": _build_report_payload(report)}
+    )
+    return report
 
 @router.post("/photo", response_model=ReportPhotoUploadResponseDTO)
 def upload_report_photo(
@@ -82,13 +110,27 @@ def get_feed(
         limit=limit
     )
 
-@router.get("/{id}")
+@router.get("/me/created", response_model=List[ReportResponseDTO])
+def get_my_reports(
+    search: str = Query(None, description="Buscar por título"),
+    controller = Depends(get_my_reports_controller),
+    user = Depends(get_current_user)
+):
+    return controller.run(user_id=user.id, search=search)
+
+@router.get("/ws", include_in_schema=False)
+def reports_ws_http_hint():
+    raise HTTPException(
+        status_code=426,
+        detail="Este endpoint requiere WebSocket (ws:// o wss://), no HTTP GET normal",
+    )
+
+@router.get("/{id:int}")
 def get_report_detail(
     id: int,
     controller = Depends(get_detail_controller),
-    user = Depends(get_current_user) # <-- Inyectamos el usuario actual
+    user = Depends(get_current_user) 
 ):
-    # Ahora el controlador ya sabe quién eres
     return controller.run(report_id=id, user_id=user.id)
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -104,18 +146,73 @@ def delete_report(
 def vote_report(
     id: int,
     data: VoteDTO,
+    background_tasks: BackgroundTasks,
     controller = Depends(get_vote_controller),
+    reports_repo = Depends(get_reports_repo),
     user = Depends(get_current_user)
 ):
-    return controller.run(report_id=id, user_id=user.id, dto=data)
+    result = controller.run(report_id=id, user_id=user.id, dto=data)
+    report = reports_repo.get_by_id(id)
+    if report is not None:
+        background_tasks.add_task(
+            reports_realtime_broker.publish,
+            ReportRealtimeEvent.VOTE_UPDATE,
+            {
+                "report_id": report.id,
+                "credibility_score": report.credibility_score,
+                "status": report.status.value,
+            }
+        )
+    return result
 
-@router.patch("/{id}") # O prueba cambiarlo a .put("/{id}") si el 405 persiste
+@router.patch("/{id}") 
 def update_report(
     id: int,
     data: UpdateReportDTO,
     controller = Depends(get_update_controller),
     user = Depends(get_current_user)
 ):
-    # Log de debug para ver qué llega (puedes borrarlo después)
     print(f"Editando reporte {id} por usuario {user.id}")
     return controller.run(report_id=id, user_id=user.id, dto=data)
+
+
+@router.websocket("/ws")
+async def reports_websocket(
+    websocket: WebSocket,
+    auth_repo: SQLUserRepository = Depends(get_auth_repo)
+):
+    token = _extract_websocket_token(websocket)
+    if not token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Token requerido")
+        return
+
+    try:
+        user = get_user_from_access_token(token, auth_repo)
+    except HTTPException:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Token invalido")
+        return
+
+    await websocket.accept()
+    await websocket.send_json({"event": "CONNECTED", "payload": {"user_id": user.id}})
+
+    queue = await reports_realtime_broker.subscribe()
+
+    async def forward_events() -> None:
+        while True:
+            message = await queue.get()
+            if websocket.application_state != WebSocketState.CONNECTED:
+                break
+            await websocket.send_text(message)
+
+    forward_task = asyncio.create_task(forward_events())
+
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        forward_task.cancel()
+        await reports_realtime_broker.unsubscribe(queue)
+        if websocket.application_state == WebSocketState.CONNECTED:
+            await websocket.close()

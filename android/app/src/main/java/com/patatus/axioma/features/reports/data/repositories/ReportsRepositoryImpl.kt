@@ -7,19 +7,22 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
-import dagger.hilt.android.qualifiers.ApplicationContext
 import com.patatus.axioma.core.database.AxiomaDatabase
 import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
-import com.patatus.axioma.features.reports.data.datasources.remote.mediator.ReportRemoteMediator
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toDomain
+import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toEntity
+import com.patatus.axioma.features.reports.data.datasources.remote.mediator.ReportRemoteMediator
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
+import com.patatus.axioma.features.reports.data.realtime.ReportsRealtimeWebSocketDataSource
 import com.patatus.axioma.features.reports.domain.entities.FeedQuery
 import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -37,8 +40,11 @@ import javax.inject.Inject
 class ReportsRepositoryImpl @Inject constructor(
     private val api: ReportsApiService,
     private val database: AxiomaDatabase,
+    private val realtimeDataSource: ReportsRealtimeWebSocketDataSource,
     @ApplicationContext private val context: Context
 ) : ReportsRepository {
+
+    private val reportDao = database.reportDao()
 
     override suspend fun createReport(
         title: String,
@@ -79,18 +85,40 @@ class ReportsRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val uri = localUri.toUri()
-                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-                val extension = mimeType.substringAfter('/', "jpg")
-                val tempFile = File.createTempFile("report_upload_", ".${extension}", context.cacheDir)
+                val tempFile = File.createTempFile("report_upload_", ".jpg", context.cacheDir)
 
-                context.contentResolver.openInputStream(uri).use { input ->
-                    if (input == null) {
-                        return@withContext Result.failure(Exception("No se pudo leer la imagen seleccionada"))
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    val originalBitmap = android.graphics.BitmapFactory.decodeStream(input)
+                        ?: return@withContext Result.failure(Exception("No se pudo leer la imagen"))
+
+                    val maxSize = 1080
+                    val ratio = kotlin.math.min(
+                        maxSize.toFloat() / originalBitmap.width,
+                        maxSize.toFloat() / originalBitmap.height
+                    )
+
+                    val scaledBitmap = if (ratio < 1f) {
+                        android.graphics.Bitmap.createScaledBitmap(
+                            originalBitmap,
+                            (originalBitmap.width * ratio).toInt(),
+                            (originalBitmap.height * ratio).toInt(),
+                            true
+                        )
+                    } else {
+                        originalBitmap
                     }
-                    tempFile.outputStream().use { output -> input.copyTo(output) }
+
+                    tempFile.outputStream().use { output ->
+                        scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, output)
+                    }
+
+                    if (scaledBitmap != originalBitmap) {
+                        scaledBitmap.recycle()
+                    }
+                    originalBitmap.recycle()
                 }
 
-                val body = tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
+                val body = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
                 val part = MultipartBody.Part.createFormData("photo", tempFile.name, body)
                 val response = api.uploadReportPhoto(part)
                 tempFile.delete()
@@ -168,16 +196,13 @@ class ReportsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateReport(id: Int, title: String, desc: String, photoUrl: String?): Result<Report> {
-        return try {
+        return safeApiCall {
             val request = ReportUpdateRequest(
                 title = title,
                 description = desc,
                 photoUrl = photoUrl
             )
-            val response = api.updateReport(id, request)
-            Result.success(response.toDomain())
-        } catch (e: Exception) {
-            Result.failure(e)
+            api.updateReport(id, request).toDomain()
         }
     }
 
@@ -202,8 +227,38 @@ class ReportsRepositoryImpl @Inject constructor(
     override suspend fun voteReport(id: Int, isUpvote: Boolean): Result<VoteResponse> {
         return safeApiCall {
             val voteInt = if (isUpvote) 1 else -1
-
             api.voteReport(id, VoteRequest(voteInt))
+        }
+    }
+
+    override suspend fun getMyReports(search: String?): Result<List<Report>> {
+        return safeApiCall {
+            api.getMyReports(search).map { it.toDomain() }
+        }
+    }
+
+    override fun observeRealtimeEvents(): Flow<ReportRealtimeEvent> {
+        return realtimeDataSource.observeEvents()
+    }
+
+    override suspend fun applyRealtimeEvent(event: ReportRealtimeEvent) {
+        withContext(Dispatchers.IO) {
+            when (event) {
+                is ReportRealtimeEvent.NewReport -> {
+                    val existingReport = reportDao.getById(event.report.id)
+                    reportDao.insert(
+                        event.report.toEntity(userVote = existingReport?.userVote ?: 0)
+                    )
+                }
+
+                is ReportRealtimeEvent.VoteUpdate -> {
+                    reportDao.updateRealtimeVote(
+                        reportId = event.reportId,
+                        credibilityScore = event.credibilityScore,
+                        status = event.status
+                    )
+                }
+            }
         }
     }
 

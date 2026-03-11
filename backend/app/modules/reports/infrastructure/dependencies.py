@@ -21,6 +21,12 @@ from app.modules.reports.infrastructure.controllers.vote_controller import VoteR
 from app.modules.reports.application.get_all_reports import GetAllReportsUseCase
 from app.modules.reports.infrastructure.controllers.get_all_controller import GetAllReportsController
 
+from app.modules.reports.application.get_my_reports import GetMyReportsUseCase
+from app.modules.reports.infrastructure.controllers.get_my_reports_controller import GetMyReportsController
+
+
+
+
 def get_reports_repo(session: Session = Depends(get_session)) -> SQLReportRepository:
     return SQLReportRepository(session)
 
@@ -48,3 +54,6 @@ def get_update_controller(
     repo = SQLReportRepository(session)
     use_case = UpdateReportUseCase(repo, storage_repo)
     return UpdateReportController(use_case)
+
+def get_my_reports_uc(repo=Depends(get_reports_repo)): return GetMyReportsUseCase(repo)
+def get_my_reports_controller(uc=Depends(get_my_reports_uc)): return GetMyReportsController(uc)

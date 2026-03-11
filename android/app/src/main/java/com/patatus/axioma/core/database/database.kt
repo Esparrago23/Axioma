@@ -12,7 +12,7 @@ import com.patatus.axioma.features.reports.data.datasources.local.db.entities.Re
         ReportEntity::class,
         ReportRemoteKeysEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AxiomaDatabase : RoomDatabase() {

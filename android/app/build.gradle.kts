@@ -16,7 +16,6 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
-
 }
 
 android {
@@ -57,20 +56,14 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".dev"
             resValue("string", "app_name", "Axioma (DEV)")
-
             resValue("string", "mapbox_access_token", mapboxToken)
-
-            buildConfigField(
-                "String",
-                "BASE_URL_API",
-                "\"https://esparrago.engineer/\"")
+            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
         }
 
         create("prod") {
             dimension = "environment"
             resValue("string", "app_name", "Axioma Prod")
             resValue("string", "mapbox_access_token", mapboxToken)
-
             buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
         }
     }
@@ -89,7 +82,8 @@ android {
 
 dependencies {
     implementation("org.glassfish.jaxb:jaxb-runtime:4.0.5")
-// Maps
+    
+    // Maps
     implementation("com.mapbox.maps:android:11.6.1")
     implementation("com.mapbox.extension:maps-compose:11.6.0")
 

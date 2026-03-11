@@ -1,5 +1,6 @@
 package com.patatus.axioma.features.reports.presentation.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,28 +13,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -42,6 +47,8 @@ import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
+import coil.compose.AsyncImage
+import com.patatus.axioma.BuildConfig
 import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.presentation.viewmodels.FeedViewModel
@@ -59,6 +66,11 @@ fun FeedScreen(
 ) {
     val feedQuery by viewModel.feedQuery.collectAsStateWithLifecycle()
     val reports = viewModel.reportsFeed.collectAsLazyPagingItems()
+    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+         viewModel.loadUserProfile()
+    }
 
     LaunchedEffect(currentLatitude, currentLongitude, cityRadiusKm) {
         if (currentLatitude != null && currentLongitude != null) {
@@ -75,17 +87,49 @@ fun FeedScreen(
             TopAppBar(
                 title = { Text("Axioma") },
                 actions = {
-                    TextButton(onClick = onNavigateToProfile) {
-                        Text("Perfil")
+                    // ⭐ NUEVO: Botón de perfil con imagen
+                    IconButton(
+                        onClick = onNavigateToProfile,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        val profileImageUrl = remember(userProfile?.profilePicture) {
+                            val rawUrl = userProfile?.profilePicture ?: ""
+                            when {
+                                rawUrl.isBlank() -> null
+                                rawUrl.startsWith("http") -> rawUrl.replace("localhost", "10.0.2.2")
+                                else -> "${BuildConfig.BASE_URL_API.removeSuffix("/")}/${rawUrl.removePrefix("/")}"
+                            }
+                        }
+
+                        if (profileImageUrl != null) {
+                            AsyncImage(
+                                model = profileImageUrl,
+                                contentDescription = "Perfil",
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Perfil",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToCreate) {
-                Icon(Icons.Default.Add, contentDescription = "Crear")
-            }
-        }
     ) { padding ->
         Column(
             modifier = Modifier

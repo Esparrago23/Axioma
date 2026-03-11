@@ -1,14 +1,13 @@
 package com.patatus.axioma.features.users.data.repositories
 
 import android.content.Context
-import android.net.Uri
 import androidx.core.net.toUri
-import dagger.hilt.android.qualifiers.ApplicationContext
 import com.patatus.axioma.features.users.data.datasources.remote.api.UsersApiService
 import com.patatus.axioma.features.users.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.users.data.datasources.remote.models.UserUpdateRequest
 import com.patatus.axioma.features.users.domain.entities.User
 import com.patatus.axioma.features.users.domain.repositories.UsersRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -50,22 +49,45 @@ class UsersRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val uri = localUri.toUri()
-                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-                val extension = mimeType.substringAfter('/', "jpg")
-                val tempFile = File.createTempFile("profile_upload_", ".${extension}", context.cacheDir)
+                val tempFile = File.createTempFile("profile_upload_", ".jpg", context.cacheDir)
 
-                context.contentResolver.openInputStream(uri).use { input ->
-                    if (input == null) {
-                        return@withContext Result.failure(Exception("No se pudo leer el archivo seleccionado"))
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    val originalBitmap = android.graphics.BitmapFactory.decodeStream(input)
+                        ?: return@withContext Result.failure(Exception("No se pudo leer la imagen"))
+
+                    val maxSize = 1080
+                    val ratio = kotlin.math.min(
+                        maxSize.toFloat() / originalBitmap.width,
+                        maxSize.toFloat() / originalBitmap.height
+                    )
+
+                    val scaledBitmap = if (ratio < 1f) {
+                        android.graphics.Bitmap.createScaledBitmap(
+                            originalBitmap,
+                            (originalBitmap.width * ratio).toInt(),
+                            (originalBitmap.height * ratio).toInt(),
+                            true
+                        )
+                    } else {
+                        originalBitmap
                     }
-                    tempFile.outputStream().use { output -> input.copyTo(output) }
+
+                    tempFile.outputStream().use { output ->
+                        scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, output)
+                    }
+
+                    if (scaledBitmap != originalBitmap) {
+                        scaledBitmap.recycle()
+                    }
+                    originalBitmap.recycle()
                 }
 
-                val body = tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
+                val body = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
                 val part = MultipartBody.Part.createFormData("photo", tempFile.name, body)
 
                 val updated = apiService.uploadMyProfilePhoto(part).toDomain()
                 tempFile.delete()
+
                 Result.success(updated)
             } catch (e: HttpException) {
                 Result.failure(Exception(parseErrorMessage(e)))
