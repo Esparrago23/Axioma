@@ -271,7 +271,7 @@ fun LoginScreen(
                         contentDescription = null,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Inicio rapido con huella/rostro")
+                    Text("Inicio rapido con huella")
                 }
             }
 
