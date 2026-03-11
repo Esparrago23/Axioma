@@ -110,7 +110,15 @@ def get_feed(
         limit=limit
     )
 
-@router.get("/{id}")
+
+@router.get("/ws", include_in_schema=False)
+def reports_ws_http_hint():
+    raise HTTPException(
+        status_code=426,
+        detail="Este endpoint requiere WebSocket (ws:// o wss://), no HTTP GET normal",
+    )
+
+@router.get("/{id:int}")
 def get_report_detail(
     id: int,
     controller = Depends(get_detail_controller),
