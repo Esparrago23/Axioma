@@ -7,12 +7,11 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
-import dagger.hilt.android.qualifiers.ApplicationContext
 import com.patatus.axioma.core.database.AxiomaDatabase
 import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
-import com.patatus.axioma.features.reports.data.datasources.remote.mediator.ReportRemoteMediator
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toEntity
+import com.patatus.axioma.features.reports.data.datasources.remote.mediator.ReportRemoteMediator
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
@@ -23,6 +22,7 @@ import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -202,56 +202,55 @@ class ReportsRepositoryImpl @Inject constructor(
         }
     }
 
-override suspend fun voteReport(id: Int, isUpvote: Boolean): Result<VoteResponse> {
-        return safeApiCall {
-            val voteInt = if (isUpvote) 1 else -1
+    override suspend fun voteReport(id: Int, isUpvote: Boolean): Result<VoteResponse> {
+        return safeApiCall {
+            val voteInt = if (isUpvote) 1 else -1
+            api.voteReport(id, VoteRequest(voteInt))
+        }
+    }
 
-            api.voteReport(id, VoteRequest(voteInt))
-        }
-    }
+    override suspend fun getMyReports(search: String?): Result<List<Report>> {
+        return safeApiCall {
+            api.getMyReports(search).map { it.toDomain() }
+        }
+    }
 
-    override suspend fun getMyReports(search: String?): Result<List<Report>> {
-        return safeApiCall {
-            api.getMyReports(search).map { it.toDomain() }
-        }
-    }
+    override fun observeRealtimeEvents(): Flow<ReportRealtimeEvent> {
+        return realtimeDataSource.observeEvents()
+    }
 
-    override fun observeRealtimeEvents(): Flow<ReportRealtimeEvent> {
-        return realtimeDataSource.observeEvents()
-    }
+    override suspend fun applyRealtimeEvent(event: ReportRealtimeEvent) {
+        withContext(Dispatchers.IO) {
+            when (event) {
+                is ReportRealtimeEvent.NewReport -> {
+                    val existingReport = reportDao.getById(event.report.id)
+                    reportDao.insert(
+                        event.report.toEntity(userVote = existingReport?.userVote ?: 0)
+                    )
+                }
 
-    override suspend fun applyRealtimeEvent(event: ReportRealtimeEvent) {
-        withContext(Dispatchers.IO) {
-            when (event) {
-                is ReportRealtimeEvent.NewReport -> {
-                    val existingReport = reportDao.getById(event.report.id)
-                    reportDao.insert(
-                        event.report.toEntity(userVote = existingReport?.userVote ?: 0)
-                    )
-                }
+                is ReportRealtimeEvent.VoteUpdate -> {
+                    reportDao.updateRealtimeVote(
+                        reportId = event.reportId,
+                        credibilityScore = event.credibilityScore,
+                        status = event.status
+                    )
+                }
+            }
+        }
+    }
 
-                is ReportRealtimeEvent.VoteUpdate -> {
-                    reportDao.updateRealtimeVote(
-                        reportId = event.reportId,
-                        credibilityScore = event.credibilityScore,
-                        status = event.status
-                    )
-                }
-            }
-        }
-    }
-
-    private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
-        return withContext(Dispatchers.IO) {
-            try {
-                Result.success(apiCall())
-            } catch (e: HttpException) {
-                val errorBody = e.response()?.errorBody()?.string()
-                val msg = try { JSONObject(errorBody).getString("detail") } catch (ex: Exception) { "Error del servidor" }
-                Result.failure(Exception(msg))
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
-    }
+    private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Result.success(apiCall())
+            } catch (e: HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val msg = try { JSONObject(errorBody).getString("detail") } catch (ex: Exception) { "Error del servidor" }
+                Result.failure(Exception(msg))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
 }
