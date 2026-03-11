@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-
+import com.patatus.axioma.features.reports.presentation.screens.MapScreen
 class AppScreens(
 
 ) {
@@ -119,9 +119,12 @@ class AppScreens(
     /* ---------------- MAPA (Placeholder) ---------------- */
     @Composable
     fun Mapa(navController: NavController) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Pantalla de Mapa en construcción")
-        }
+
+        val viewModel: FeedViewModel = hiltViewModel()
+
+        MapScreen(
+            viewModel = viewModel
+        )
     }
 
     /* ---------------- MIS REPORTES (Placeholder) ---------------- */
