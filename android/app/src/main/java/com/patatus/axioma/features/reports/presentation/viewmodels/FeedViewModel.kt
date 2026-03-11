@@ -58,7 +58,7 @@ class FeedViewModel @Inject constructor(
         }
     }
 
-    private fun loadUserProfile() {
+    fun loadUserProfile() {
         viewModelScope.launch {
             getUserProfileUseCase()
                 .onSuccess { profile ->
