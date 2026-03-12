@@ -1,7 +1,10 @@
 package com.patatus.axioma.features.auth.presentation.viewmodels
 
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.patatus.axioma.core.hardware.biometric.BiometricAuthManager
+import com.patatus.axioma.core.hardware.biometric.BiometricAvailability
 import com.patatus.axioma.features.auth.domain.usecases.HasQuickSessionUseCase
 import com.patatus.axioma.features.auth.domain.usecases.LoginUseCase
 import com.patatus.axioma.features.auth.domain.usecases.QuickLoginUseCase
@@ -18,6 +21,7 @@ class AuthViewModel @Inject constructor(
     private val registerUseCase: RegisterUseCase,
     private val quickLoginUseCase: QuickLoginUseCase,
     private val hasQuickSessionUseCase: HasQuickSessionUseCase,
+    private val biometricAuthManager: BiometricAuthManager
 ) : ViewModel() {
 
     private val _email = MutableStateFlow("")
@@ -45,6 +49,19 @@ class AuthViewModel @Inject constructor(
 
     fun onPasswordChanged(value: String) {
         _password.value = value
+    }
+
+    fun checkBiometricAvailability(activity: FragmentActivity) {
+        val availability = biometricAuthManager.checkAvailability(activity)
+        _biometricAvailable.value = (availability == BiometricAvailability.AVAILABLE)
+    }
+
+    fun showBiometricPrompt(activity: FragmentActivity) {
+        biometricAuthManager.authenticate(
+            activity = activity,
+            onSuccess = { onQuickLogin() },
+            onError = { message -> onBiometricPromptError(message) }
+        )
     }
 
     fun onLogin() {
@@ -83,10 +100,6 @@ class AuthViewModel @Inject constructor(
                 _uiState.value = AuthUiState.Error(error.message ?: "Error desconocido al registrar")
             }
         }
-    }
-
-    fun onBiometricAvailabilityChanged(isAvailable: Boolean) {
-        _biometricAvailable.value = isAvailable
     }
 
     fun onQuickLogin() {

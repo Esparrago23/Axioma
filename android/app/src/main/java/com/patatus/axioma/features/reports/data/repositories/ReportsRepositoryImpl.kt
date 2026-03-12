@@ -8,6 +8,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
 import com.patatus.axioma.core.database.AxiomaDatabase
+import com.patatus.axioma.features.reports.data.datasources.local.db.daos.ReportDao
 import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toEntity
@@ -39,12 +40,12 @@ import javax.inject.Inject
 
 class ReportsRepositoryImpl @Inject constructor(
     private val api: ReportsApiService,
+    private val reportDao: ReportDao,
     private val database: AxiomaDatabase,
     private val realtimeDataSource: ReportsRealtimeWebSocketDataSource,
     @ApplicationContext private val context: Context
 ) : ReportsRepository {
 
-    private val reportDao = database.reportDao()
 
     override suspend fun createReport(
         title: String,

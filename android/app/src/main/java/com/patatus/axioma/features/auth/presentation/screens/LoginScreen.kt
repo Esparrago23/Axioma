@@ -51,12 +51,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.fragment.app.FragmentActivity
 import com.patatus.axioma.R
-import com.patatus.axioma.core.hardware.biometric.BiometricAuthManager
-import com.patatus.axioma.core.hardware.biometric.BiometricAvailability
 import com.patatus.axioma.features.auth.presentation.viewmodels.AuthUiState
 import com.patatus.axioma.features.auth.presentation.viewmodels.AuthViewModel
 
@@ -80,8 +78,7 @@ fun LoginScreen(
     val scrollState = rememberScrollState()
 
     LaunchedEffect(activity) {
-        val availability = activity?.let { BiometricAuthManager.checkAvailability(it) }
-        viewModel.onBiometricAvailabilityChanged(availability == BiometricAvailability.AVAILABLE)
+        activity?.let { viewModel.checkBiometricAvailability(it) }
     }
 
     /* ---------- Navegación segura ---------- */
@@ -254,11 +251,7 @@ fun LoginScreen(
                             return@Button
                         }
 
-                        BiometricAuthManager.authenticate(
-                            activity = activity,
-                            onSuccess = { viewModel.onQuickLogin() },
-                            onError = { message -> viewModel.onBiometricPromptError(message) },
-                        )
+                        viewModel.showBiometricPrompt(activity)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
