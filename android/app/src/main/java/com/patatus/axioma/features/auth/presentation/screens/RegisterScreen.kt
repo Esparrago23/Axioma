@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.patatus.axioma.R
-import com.patatus.axioma.features.auth.presentation.viewmodels.AuthUiState
 import com.patatus.axioma.features.auth.presentation.viewmodels.AuthViewModel
 
 @Composable
@@ -64,14 +63,11 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
-    val email by viewModel.email.collectAsStateWithLifecycle()
-    val password by viewModel.password.collectAsStateWithLifecycle()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var passwordVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState) {
-        if (uiState is AuthUiState.SuccessRegister) {
+    LaunchedEffect(state.status) {
+        if (state.status is AuthStatus.SuccessRegister) {
             viewModel.resetState()
             onRegisterSuccess()
         }
@@ -118,7 +114,7 @@ fun RegisterScreen(
 
             // 2. Formulario Estilizado
             OutlinedTextField(
-                value = email,
+                value = state.email,
                 onValueChange = { viewModel.onEmailChanged(it) },
                 label = { Text("Correo Electrónico") },
                 placeholder = { Text("ejemplo@usuario.com") },
@@ -139,7 +135,7 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = password,
+                value = state.password,
                 onValueChange = { viewModel.onPasswordChanged(it) },
                 label = { Text("Contraseña") },
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
@@ -164,7 +160,7 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Mensajes de Error con mejor visibilidad
-            if (uiState is AuthUiState.Error) {
+            if (state.status is AuthStatus.Error) {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
                     shape = RoundedCornerShape(8.dp),
@@ -182,7 +178,7 @@ fun RegisterScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = (uiState as AuthUiState.Error).message,
+                            text = (state.status as AuthStatus.Error).message,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -199,12 +195,12 @@ fun RegisterScreen(
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                enabled = uiState !is AuthUiState.Loading,
+                enabled = state.status !is AuthStatus.Loading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                if (uiState is AuthUiState.Loading) {
+                if (state.status is AuthStatus.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
