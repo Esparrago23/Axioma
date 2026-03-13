@@ -4,8 +4,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.patatus.axioma.features.notifications.data.datasources.local.daos.NotificationDao
 import com.patatus.axioma.features.notifications.data.datasources.local.daos.NotificationRemoteKeysDao
+import com.patatus.axioma.features.notifications.data.datasources.local.entities.NotificationEntity
 import com.patatus.axioma.features.notifications.data.datasources.local.entities.NotificationRemoteKeysEntity
-import com.patatus.axioma.features.notifications.domain.entities.NotificationEntity
 import com.patatus.axioma.features.reports.data.datasources.local.db.daos.ReportDao
 import com.patatus.axioma.features.reports.data.datasources.local.db.daos.ReportRemoteKeysDao
 import com.patatus.axioma.features.reports.data.datasources.local.db.entities.ReportEntity
@@ -15,7 +15,7 @@ import com.patatus.axioma.features.reports.data.datasources.local.db.entities.Re
     entities = [
         ReportEntity::class,
         ReportRemoteKeysEntity::class,
-        NotificationEntity:: class,
+        NotificationEntity::class,
         NotificationRemoteKeysEntity::class,
     ],
     version = 2,

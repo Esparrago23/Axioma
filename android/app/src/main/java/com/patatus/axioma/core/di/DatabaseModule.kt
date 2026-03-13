@@ -6,6 +6,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.patatus.axioma.BuildConfig
 import com.patatus.axioma.core.database.AxiomaDatabase
+import com.patatus.axioma.features.notifications.data.datasources.local.daos.NotificationDao
+import com.patatus.axioma.features.notifications.data.datasources.local.daos.NotificationRemoteKeysDao
 import com.patatus.axioma.features.reports.data.datasources.local.db.daos.ReportDao
 import com.patatus.axioma.features.reports.data.datasources.local.db.daos.ReportRemoteKeysDao
 import dagger.Module
@@ -53,5 +55,17 @@ object DatabaseModule {
     @Singleton
     fun provideReportRemoteKeysDao(database: AxiomaDatabase): ReportRemoteKeysDao {
         return database.reportRemoteKeysDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationDao(database: AxiomaDatabase): NotificationDao {
+        return database.notificationDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationRemoteKeysDao(database: AxiomaDatabase): NotificationRemoteKeysDao {
+        return database.notificationRemoteKeysDao()
     }
 }

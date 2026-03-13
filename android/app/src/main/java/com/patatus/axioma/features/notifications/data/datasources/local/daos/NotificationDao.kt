@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.patatus.axioma.features.notifications.data.datasources.local.entities.NotificationEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NotificationDao {
@@ -24,4 +25,10 @@ interface NotificationDao {
 
     @Query("SELECT * FROM notifications WHERE id = :id")
     suspend fun getById(id: Int): NotificationEntity?
+
+    @Query("UPDATE notifications SET isRead = 1 WHERE id = :id")
+    suspend fun markAsRead(id: Int)
+
+    @Query("SELECT COUNT(*) FROM notifications WHERE isRead = 0")
+    fun observeUnreadCount(): Flow<Int>
 }

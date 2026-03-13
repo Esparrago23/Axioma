@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -13,7 +12,6 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.patatus.axioma.MainActivity
-import com.patatus.axioma.R // Asegúrate de tener un icono adecuado
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +24,9 @@ class AxiomaFirebaseMessagingService : FirebaseMessagingService() {
 
     @Inject
     lateinit var pushNotificationManager: PushNotificationManager
+
+    @Inject
+    lateinit var incomingPushNotificationHandler: IncomingPushNotificationHandler
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -61,7 +62,21 @@ class AxiomaFirebaseMessagingService : FirebaseMessagingService() {
             ?: remoteMessage.data["body"]
             ?: "Tienes una nueva notificación ciudadana."
 
-        // TODO: (Para tu Feature) Aquí deberías llamar a tu Caso de Uso o Manager para guardar
+        val type = remoteMessage.data["type"] ?: "incident_alert"
+        val referenceId = remoteMessage.data["reference_id"]?.toIntOrNull()
+        val notificationId = remoteMessage.data["notification_id"]?.toIntOrNull()
+        val createdAt = remoteMessage.data["created_at"]
+
+        serviceScope.launch {
+            incomingPushNotificationHandler.handleIncomingMessage(
+                id = notificationId,
+                title = title,
+                body = body,
+                type = type,
+                referenceId = referenceId,
+                createdAt = createdAt
+            )
+        }
 
         showNotification(title = title, body = body)
     }
