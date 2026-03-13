@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class NotificationType(str, Enum):
@@ -21,4 +21,4 @@ class Notification(BaseModel):
     type: str
     is_read: bool = False
     report_id: int | None = None
-    created_at: datetime = datetime.utcnow()
+    created_at: datetime = Field(default_factory=datetime.utcnow)
