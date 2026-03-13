@@ -448,27 +448,38 @@ fun ProfileScreen(
                 }
             }
 
-            // Botón de eliminar cuenta
-            TextButton(
-                onClick = { viewModel.logout() },
-                enabled = !state.isSaving && !state.isDeleting && !state.isLoggingOut,
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = if (state.isLoggingOut) "Cerrando sesión..." else "Cerrar sesión",
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+                // Botón Cerrar Sesión
+                TextButton(
+                    onClick = { viewModel.logout() },
+                    enabled = !state.isSaving && !state.isDeleting && !state.isLoggingOut,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = if (state.isLoggingOut) "Saliendo..." else "Cerrar sesión",
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-            TextButton(
-                onClick = { showDeleteConfirmationDialog = true },
-                enabled = !state.isSaving && !state.isDeleting && !state.isLoggingOut,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = if (state.isDeleting) "Eliminando..." else "Eliminar cuenta",
-                    color = MaterialTheme.colorScheme.error
-                )
+                // Botón Eliminar Cuenta
+                TextButton(
+                    onClick = { showDeleteConfirmationDialog = true },
+                    enabled = !state.isSaving && !state.isDeleting && !state.isLoggingOut,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = if (state.isDeleting) "Eliminando..." else "Eliminar cuenta",
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }

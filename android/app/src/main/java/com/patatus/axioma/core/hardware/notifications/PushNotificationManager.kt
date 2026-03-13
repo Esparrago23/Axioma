@@ -1,9 +1,11 @@
 package com.patatus.axioma.core.hardware.notifications
 
+import android.content.Context
 import com.google.firebase.messaging.FirebaseMessaging
 import com.patatus.axioma.core.hardware.location.LocationCapture
 import com.patatus.axioma.core.hardware.location.LocationResult2
 import com.patatus.axioma.features.users.domain.repositories.UsersRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,7 +14,8 @@ import kotlin.coroutines.resume
 @Singleton
 class PushNotificationManager @Inject constructor(
     private val usersRepository: UsersRepository,
-    private val locationCapture: LocationCapture
+    private val locationCapture: LocationCapture,
+    @ApplicationContext private val context: Context
 ) {
     suspend fun syncTokenAndCurrentLocation(explicitToken: String? = null): Result<Unit> {
         val tokenResult = explicitToken?.let { Result.success(it) } ?: fetchCurrentFcmToken()
@@ -24,19 +27,40 @@ class PushNotificationManager @Inject constructor(
             else -> null to null
         }
 
-        return usersRepository.updatePushRegistration(
+        val result = usersRepository.updatePushRegistration(
             fcmToken = token,
             lastLatitude = latitude,
             lastLongitude = longitude
         )
+
+        if (result.isFailure) {
+            PushSyncRetryWorker.enqueue(
+                context = context,
+                fcmToken = token,
+                lastLatitude = latitude,
+                lastLongitude = longitude,
+            )
+        }
+
+        return result
     }
 
     suspend fun syncLocation(latitude: Double, longitude: Double): Result<Unit> {
-        return usersRepository.updatePushRegistration(
+        val result = usersRepository.updatePushRegistration(
             fcmToken = null,
             lastLatitude = latitude,
             lastLongitude = longitude
         )
+
+        if (result.isFailure) {
+            PushSyncRetryWorker.enqueue(
+                context = context,
+                lastLatitude = latitude,
+                lastLongitude = longitude,
+            )
+        }
+
+        return result
     }
 
     private suspend fun fetchCurrentFcmToken(): Result<String> {

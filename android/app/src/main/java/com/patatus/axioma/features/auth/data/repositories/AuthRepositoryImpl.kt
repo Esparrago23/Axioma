@@ -9,6 +9,7 @@ import com.patatus.axioma.features.auth.data.datasources.remote.models.LogoutReq
 import com.patatus.axioma.features.auth.data.datasources.remote.models.RefreshTokenRequest
 import com.patatus.axioma.features.auth.domain.entities.User
 import com.patatus.axioma.features.auth.domain.repositories.AuthRepository
+import com.patatus.axioma.features.users.domain.repositories.UsersRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -17,7 +18,8 @@ import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val apiService: AuthApiService,
-    private val secureSessionStore: SecureSessionStore // <-- HILT INYECTA LA DEPENDENCIA AQUÍ
+    private val secureSessionStore: SecureSessionStore,
+    private val usersRepository: UsersRepository
 ) : AuthRepository {
 
     override suspend fun login(email: String, pass: String): Result<User> {
@@ -85,6 +87,16 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun clearStoredSession() {
         withContext(Dispatchers.IO) {
+            // Best effort: desregistrar token push antes de invalidar sesion local/remota.
+            runCatching {
+                usersRepository.updatePushRegistration(
+                    fcmToken = null,
+                    lastLatitude = null,
+                    lastLongitude = null,
+                    forceNullTokenField = true
+                )
+            }
+
             val storedRefreshToken = secureSessionStore.getRefreshToken()
             if (!storedRefreshToken.isNullOrBlank()) {
                 runCatching {

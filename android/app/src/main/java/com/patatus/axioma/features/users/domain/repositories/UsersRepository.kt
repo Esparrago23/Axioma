@@ -8,7 +8,8 @@ interface UsersRepository {
     suspend fun updatePushRegistration(
         fcmToken: String? = null,
         lastLatitude: Double? = null,
-        lastLongitude: Double? = null
+        lastLongitude: Double? = null,
+        forceNullTokenField: Boolean = false
     ): Result<Unit>
 
     suspend fun updateMyProfile(
