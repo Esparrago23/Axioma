@@ -23,7 +23,7 @@
         android:theme="@style/Theme.Axioma"
         android:usesCleartextTraffic="true">
         <service
-            android:name=".core.hardware.notifications.AxiomaFirebaseMessagingService"
+            android:name=".AxiomaFirebaseMessagingService"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
