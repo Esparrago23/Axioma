@@ -38,14 +38,21 @@ class NotificationsRealtimeWebSocketDataSource @Inject constructor(
     @Volatile private var reconnectAttempt = 0
 
     fun observeEvents(): Flow<NotificationRealTimeEvent> {
+        android.util.Log.d("NotificationWS", "observeEvents() llamado")
         return events.asSharedFlow().onStart { connectIfNeeded() }
     }
 
     private fun connectIfNeeded() {
-        if (webSocket != null || !isConnecting.compareAndSet(false, true)) return
+        if (webSocket != null || !isConnecting.compareAndSet(false, true)) {
+            android.util.Log.d("NotificationWS", "connectIfNeeded() omitido — ya conectado o conectando")
+            return
+        }
+
+        val url = AppConfig.network.notificationsWebSocketUrl
+        android.util.Log.d("NotificationWS", "Conectando a: $url")
 
         val request = Request.Builder()
-            .url(AppConfig.network.notificationsWebSocketUrl) // añade esta url en AppConfig
+            .url(url)
             .build()
 
         webSocket = okHttpClient.newWebSocket(request, NotificationsWebSocketListener())
@@ -56,6 +63,7 @@ class NotificationsRealtimeWebSocketDataSource @Inject constructor(
         scope.launch {
             reconnectAttempt += 1
             val delayMs = (2_000L * reconnectAttempt.coerceAtMost(5)).coerceAtMost(30_000L)
+            android.util.Log.d("NotificationWS", "Reconectando en ${delayMs}ms (intento $reconnectAttempt)")
             delay(delayMs)
             connectIfNeeded()
         }
@@ -63,16 +71,22 @@ class NotificationsRealtimeWebSocketDataSource @Inject constructor(
 
     private inner class NotificationsWebSocketListener : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
+            android.util.Log.d("NotificationWS", "WebSocket conectado")
             reconnectAttempt = 0
             isConnecting.set(false)
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            val event = parseEvent(text) ?: return
-            scope.launch { events.emit(event) }
+            android.util.Log.d("NotificationWS", "Mensaje recibido: $text")
+            val event = parseEvent(text)
+            android.util.Log.d("NotificationWS", "Evento parseado: $event")
+            if (event != null) {
+                scope.launch { events.emit(event) }
+            }
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            android.util.Log.w("NotificationWS", "WebSocket cerrando: code=$code reason=$reason")
             webSocket.close(code, reason)
             this@NotificationsRealtimeWebSocketDataSource.webSocket = null
             isConnecting.set(false)
@@ -80,12 +94,14 @@ class NotificationsRealtimeWebSocketDataSource @Inject constructor(
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            android.util.Log.w("NotificationWS", "WebSocket cerrado: code=$code reason=$reason")
             this@NotificationsRealtimeWebSocketDataSource.webSocket = null
             isConnecting.set(false)
             scheduleReconnect()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            android.util.Log.e("NotificationWS", "WebSocket error: ${t.message}", t)
             this@NotificationsRealtimeWebSocketDataSource.webSocket = null
             isConnecting.set(false)
             scheduleReconnect()
@@ -98,15 +114,21 @@ class NotificationsRealtimeWebSocketDataSource @Inject constructor(
             val eventType = jsonObject.get("event")?.asString ?: return null
             val payload = jsonObject.getAsJsonObject("payload") ?: return null
 
+            android.util.Log.d("NotificationWS", "Tipo de evento: $eventType")
+
             when (eventType) {
                 "NEW_NOTIFICATION" -> {
                     gson.fromJson(payload, NotificationPayload::class.java)
                         ?.toDomain()
                         ?.let(NotificationRealTimeEvent::NewNotification)
                 }
-                else -> null
+                else -> {
+                    android.util.Log.w("NotificationWS", "Tipo de evento desconocido: $eventType")
+                    null
+                }
             }
         } catch (e: Exception) {
+            android.util.Log.e("NotificationWS", "Error parseando evento: ${e.message}", e)
             null
         }
     }
