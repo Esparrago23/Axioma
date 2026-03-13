@@ -38,6 +38,30 @@ def init_db():
         conn.execute(
             text(
                 """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS fcm_token VARCHAR;
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS last_latitude DOUBLE PRECISION;
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS last_longitude DOUBLE PRECISION;
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
                 UPDATE users
                 SET profile_picture_url = replace(profile_picture_url, 'http://localhost:9000/', :public_endpoint)
                 WHERE profile_picture_url LIKE 'http://localhost:9000/%';

@@ -3,6 +3,7 @@ from sqlmodel import Session
 from app.core.database import get_session
 from app.modules.reports.infrastructure.persistence.sql_repository import SQLReportRepository
 from app.core.storage.dependencies import get_storage_repository
+from app.modules.notifications.infrastructure.dependencies import get_send_push_uc
 
 # --- Importamos Use Cases ---
 from app.modules.reports.application.create_report import CreateReportUseCase
@@ -30,7 +31,7 @@ from app.modules.reports.infrastructure.controllers.get_my_reports_controller im
 def get_reports_repo(session: Session = Depends(get_session)) -> SQLReportRepository:
     return SQLReportRepository(session)
 
-def get_create_uc(repo=Depends(get_reports_repo)): return CreateReportUseCase(repo)
+def get_create_uc(repo=Depends(get_reports_repo), send_push_uc=Depends(get_send_push_uc)): return CreateReportUseCase(repo, send_push_uc)
 def get_feed_uc(repo=Depends(get_reports_repo)): return GetFeedUseCase(repo)
 def get_detail_uc(repo=Depends(get_reports_repo)): return GetReportDetailUseCase(repo)
 # (⭐ NOTA: Borré get_update_uc de aquí porque lo inyectas abajo manualmente con el storage)

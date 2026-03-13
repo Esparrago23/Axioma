@@ -1,10 +1,11 @@
 from uuid import uuid4
 from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
-from app.modules.users.infrastructure.dtos import UserResponseDTO, UserUpdateDTO
+from app.modules.users.infrastructure.dtos import UpdateFcmTokenDTO, UserResponseDTO, UserUpdateDTO
 from app.modules.users.infrastructure.dependencies import (
     get_user_controller, 
     update_user_controller, 
+    update_fcm_token_controller,
     delete_user_controller
 )
 from app.modules.auth.infrastructure.dependencies import get_current_user
@@ -50,6 +51,16 @@ def update_my_profile(
     current_user: User = Depends(get_current_user)
 ):
     return controller.run(current_user.id, data)
+
+
+@router.patch("/me/fcm-token", status_code=status.HTTP_204_NO_CONTENT)
+def update_my_fcm_token(
+    data: UpdateFcmTokenDTO,
+    controller = Depends(update_fcm_token_controller),
+    current_user: User = Depends(get_current_user)
+):
+    controller.run(current_user.id, data)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.post("/me/photo", response_model=UserResponseDTO)
 def upload_my_profile_photo(
