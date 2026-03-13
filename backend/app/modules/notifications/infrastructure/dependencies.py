@@ -15,7 +15,7 @@ def get_notifications_repo(session: Session = Depends(get_session)) -> SQLNotifi
     return SQLNotificationRepository(session)
 
 
-def get_get_notifications_uc(repo=Depends(get_notifications_repo)):
+def get_notifications_uc(repo=Depends(get_notifications_repo)):
     return GetUserNotificationsUseCase(repo)
 
 
@@ -30,7 +30,7 @@ def get_send_push_uc(
     return SendPushNotificationUseCase(repo, firebase_client)
 
 
-def get_notifications_controller(uc=Depends(get_get_notifications_uc)):
+def get_notifications_controller(uc=Depends(get_notifications_uc)):
     return GetNotificationsController(uc)
 
 
