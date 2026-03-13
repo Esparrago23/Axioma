@@ -41,6 +41,10 @@ class MyReportsViewModel @Inject constructor(
         }
     }
 
+    fun refreshReports() {
+        loadMyReports(_searchQuery.value.ifBlank { null })
+    }
+
     private fun loadMyReports(query: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
