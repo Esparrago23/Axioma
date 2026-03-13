@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import com.mapbox.maps.extension.compose.annotation.IconImage
 import com.patatus.axioma.core.hardware.location.rememberLocationPermissionState
 import kotlinx.coroutines.delay
+
 @Composable
 fun MapScreen(
     viewModel: FeedViewModel = hiltViewModel()
@@ -45,8 +46,12 @@ fun MapScreen(
         }
     }
 
-    val markerBitmap = remember {
+    val reportMarkerBitmap = remember {
         ContextCompat.getDrawable(context, android.R.drawable.ic_menu_mylocation)!!.toBitmap()
+    }
+
+    val currentLocationBitmap = remember {
+        ContextCompat.getDrawable(context, android.R.drawable.presence_online)!!.toBitmap()
     }
 
 
@@ -87,16 +92,15 @@ fun MapScreen(
                     PointAnnotation(
                         point = Point.fromLngLat(lng, lat)
                     ){
-                        iconImage = IconImage(markerBitmap)
+                        iconImage = IconImage(currentLocationBitmap)
                     }
                 }
             }
-            val context = LocalContext.current
             mapReports.forEach { report ->
                 PointAnnotation(
                     point = Point.fromLngLat(report.longitude, report.latitude)
                 ) {
-                    iconImage = IconImage(markerBitmap)
+                    iconImage = IconImage(reportMarkerBitmap)
                 }
             }
         }
