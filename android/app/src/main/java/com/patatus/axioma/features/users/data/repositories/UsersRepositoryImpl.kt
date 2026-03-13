@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.core.net.toUri
 import com.patatus.axioma.features.users.data.datasources.remote.api.UsersApiService
 import com.patatus.axioma.features.users.data.datasources.remote.mapper.toDomain
+import com.google.gson.JsonNull
+import com.google.gson.JsonObject
+import com.patatus.axioma.features.users.data.datasources.remote.models.UpdateFcmTokenRequest
 import com.patatus.axioma.features.users.data.datasources.remote.models.UserUpdateRequest
 import com.patatus.axioma.features.users.domain.entities.User
 import com.patatus.axioma.features.users.domain.repositories.UsersRepository
@@ -26,6 +29,46 @@ class UsersRepositoryImpl @Inject constructor(
     override suspend fun getMyProfile(): Result<User> {
         return safeApiCall {
             apiService.getMyProfile().toDomain()
+        }
+    }
+
+    override suspend fun updatePushRegistration(
+        fcmToken: String?,
+        lastLatitude: Double?,
+        lastLongitude: Double?,
+        forceNullTokenField: Boolean
+    ): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = if (forceNullTokenField) {
+                    val payload = JsonObject().apply {
+                        add("fcm_token", JsonNull.INSTANCE)
+                        if (lastLatitude != null) addProperty("last_latitude", lastLatitude)
+                        if (lastLongitude != null) addProperty("last_longitude", lastLongitude)
+                    }
+                    apiService.updateMyFcmTokenRaw(payload)
+                } else {
+                    apiService.updateMyFcmToken(
+                        UpdateFcmTokenRequest(
+                            fcmToken = fcmToken,
+                            lastLatitude = lastLatitude,
+                            lastLongitude = lastLongitude
+                        )
+                    )
+                }
+
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    val raw = response.errorBody()?.string().orEmpty()
+                    val detail = parseErrorDetail(raw)
+                    Result.failure(Exception(detail ?: "No se pudo actualizar el registro push"))
+                }
+            } catch (e: HttpException) {
+                Result.failure(Exception(parseErrorMessage(e)))
+            } catch (e: Exception) {
+                Result.failure(Exception("Error de conexion. Verifica tu internet."))
+            }
         }
     }
 
@@ -129,10 +172,15 @@ class UsersRepositoryImpl @Inject constructor(
 
     private fun parseErrorMessage(e: HttpException): String {
         val raw = e.response()?.errorBody()?.string()
+        return parseErrorDetail(raw) ?: "Error del servidor (${e.code()})"
+    }
+
+    private fun parseErrorDetail(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
         return try {
-            JSONObject(raw).getString("detail")
+            JSONObject(raw).optString("detail").ifBlank { null }
         } catch (_: Exception) {
-            "Error del servidor (${e.code()})"
+            null
         }
     }
 }

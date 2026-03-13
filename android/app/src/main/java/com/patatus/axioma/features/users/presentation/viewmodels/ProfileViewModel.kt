@@ -2,6 +2,7 @@ package com.patatus.axioma.features.users.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.patatus.axioma.features.auth.domain.usecases.ClearSessionUseCase
 import com.patatus.axioma.core.network.SecureSessionStore
 import com.patatus.axioma.core.network.TokenManager
 import com.patatus.axioma.features.users.domain.usecases.DeleteUserAccountUseCase
@@ -23,6 +24,7 @@ class ProfileViewModel @Inject constructor(
     private val updateUserProfileUseCase: UpdateUserProfileUseCase,
     private val uploadUserProfilePhotoUseCase: UploadUserProfilePhotoUseCase,
     private val deleteUserAccountUseCase: DeleteUserAccountUseCase,
+    private val clearSessionUseCase: ClearSessionUseCase,
     private val secureSessionStore: SecureSessionStore
 ) : ViewModel() {
 
@@ -35,7 +37,7 @@ class ProfileViewModel @Inject constructor(
 
     fun loadProfile() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null, deletedAccount = false) }
+            _state.update { it.copy(isLoading = true, errorMessage = null, deletedAccount = false, loggedOut = false) }
             getUserProfileUseCase()
                 .onSuccess { user ->
                     _state.value = _state.value.copy(
@@ -55,6 +57,30 @@ class ProfileViewModel @Inject constructor(
                         )
                     }
                 }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoggingOut = true, errorMessage = null) }
+            runCatching {
+                clearSessionUseCase()
+            }.onSuccess {
+                _state.update {
+                    it.copy(
+                        isLoggingOut = false,
+                        loggedOut = true,
+                        successMessage = "Sesion cerrada"
+                    )
+                }
+            }.onFailure { error ->
+                _state.update {
+                    it.copy(
+                        isLoggingOut = false,
+                        errorMessage = error.message ?: "No se pudo cerrar sesion"
+                    )
+                }
+            }
         }
     }
 

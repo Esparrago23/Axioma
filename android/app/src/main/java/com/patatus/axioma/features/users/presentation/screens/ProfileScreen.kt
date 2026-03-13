@@ -77,6 +77,7 @@ import com.patatus.axioma.features.users.presentation.viewmodels.ProfileViewMode
 fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
     onBack: () -> Unit,
+    onLoggedOut: () -> Unit,
     onAccountDeleted: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -125,6 +126,12 @@ fun ProfileScreen(
     LaunchedEffect(state.deletedAccount) {
         if (state.deletedAccount) {
             onAccountDeleted()
+        }
+    }
+
+    LaunchedEffect(state.loggedOut) {
+        if (state.loggedOut) {
+            onLoggedOut()
         }
     }
 
@@ -441,16 +448,38 @@ fun ProfileScreen(
                 }
             }
 
-            // Botón de eliminar cuenta
-            TextButton(
-                onClick = { showDeleteConfirmationDialog = true },
-                enabled = !state.isSaving && !state.isDeleting,
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = if (state.isDeleting) "Eliminando..." else "Eliminar cuenta",
-                    color = MaterialTheme.colorScheme.error
-                )
+                // Botón Cerrar Sesión
+                TextButton(
+                    onClick = { viewModel.logout() },
+                    enabled = !state.isSaving && !state.isDeleting && !state.isLoggingOut,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = if (state.isLoggingOut) "Saliendo..." else "Cerrar sesión",
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Botón Eliminar Cuenta
+                TextButton(
+                    onClick = { showDeleteConfirmationDialog = true },
+                    enabled = !state.isSaving && !state.isDeleting && !state.isLoggingOut,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = if (state.isDeleting) "Eliminando..." else "Eliminar cuenta",
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }

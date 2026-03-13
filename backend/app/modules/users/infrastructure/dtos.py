@@ -19,8 +19,8 @@ class UserResponseDTO(BaseModel):
 
 class UpdateFcmTokenDTO(BaseModel):
     fcm_token: Optional[str] = Field(default=None, min_length=1)
-    last_latitude: Optional[float] = None
-    last_longitude: Optional[float] = None
+    last_latitude: Optional[float] = Field(default=None, ge=-90, le=90)
+    last_longitude: Optional[float] = Field(default=None, ge=-180, le=180)
 
     model_config = {
         "json_schema_extra": {

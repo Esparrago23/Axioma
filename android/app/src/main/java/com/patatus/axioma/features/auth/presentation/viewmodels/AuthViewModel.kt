@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.patatus.axioma.core.hardware.biometric.BiometricAuthManager
 import com.patatus.axioma.core.hardware.biometric.BiometricAvailability
+import com.patatus.axioma.core.hardware.notifications.PushNotificationManager
 import com.patatus.axioma.features.auth.domain.usecases.HasQuickSessionUseCase
 import com.patatus.axioma.features.auth.domain.usecases.LoginUseCase
 import com.patatus.axioma.features.auth.domain.usecases.QuickLoginUseCase
@@ -24,7 +25,8 @@ class AuthViewModel @Inject constructor(
     private val registerUseCase: RegisterUseCase,
     private val quickLoginUseCase: QuickLoginUseCase,
     private val hasQuickSessionUseCase: HasQuickSessionUseCase,
-    private val biometricAuthManager: BiometricAuthManager
+    private val biometricAuthManager: BiometricAuthManager,
+    private val pushNotificationManager: PushNotificationManager
 ) : ViewModel() {
     private val _state = MutableStateFlow(AuthState())
     val state = _state.asStateFlow()
@@ -69,6 +71,7 @@ class AuthViewModel @Inject constructor(
             val result = loginUseCase(currentState.email, currentState.password)
 
             result.onSuccess { user ->
+                syncPushRegistration()
                 _state.update { it.copy(status = AuthStatus.SuccessLogin(user.username)) }
             }.onFailure { error ->
                 _state.update {
@@ -112,6 +115,7 @@ class AuthViewModel @Inject constructor(
 
             quickLoginUseCase()
                 .onSuccess { user ->
+                    syncPushRegistration()
                     _state.update {
                         it.copy(
                             quickLoginAvailable = true,
@@ -140,6 +144,12 @@ class AuthViewModel @Inject constructor(
                 status = AuthStatus.Idle,
                 quickLoginAvailable = hasQuickSessionUseCase()
             )
+        }
+    }
+
+    private fun syncPushRegistration() {
+        viewModelScope.launch {
+            pushNotificationManager.syncTokenAndCurrentLocation()
         }
     }
 }

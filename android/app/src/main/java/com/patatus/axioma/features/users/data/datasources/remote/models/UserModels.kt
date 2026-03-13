@@ -17,3 +17,9 @@ data class UserUpdateRequest(
     @SerializedName("full_name") val fullName: String? = null,
     @SerializedName("profile_picture_url") val profilePictureUrl: String? = null
 )
+
+data class UpdateFcmTokenRequest(
+    @SerializedName("fcm_token") val fcmToken: String? = null,
+    @SerializedName("last_latitude") val lastLatitude: Double? = null,
+    @SerializedName("last_longitude") val lastLongitude: Double? = null
+)

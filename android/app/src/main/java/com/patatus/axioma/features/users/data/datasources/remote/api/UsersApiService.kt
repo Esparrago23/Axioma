@@ -1,6 +1,8 @@
 package com.patatus.axioma.features.users.data.datasources.remote.api
 
+import com.google.gson.JsonObject
 import com.patatus.axioma.features.users.data.datasources.remote.models.UserResponse
+import com.patatus.axioma.features.users.data.datasources.remote.models.UpdateFcmTokenRequest
 import com.patatus.axioma.features.users.data.datasources.remote.models.UserUpdateRequest
 import okhttp3.MultipartBody
 import retrofit2.Response
@@ -18,6 +20,12 @@ interface UsersApiService {
 
     @PATCH("users/me")
     suspend fun updateMyProfile(@Body request: UserUpdateRequest): UserResponse
+
+    @PATCH("users/me/fcm-token")
+    suspend fun updateMyFcmToken(@Body request: UpdateFcmTokenRequest): Response<Unit>
+
+    @PATCH("users/me/fcm-token")
+    suspend fun updateMyFcmTokenRaw(@Body request: JsonObject): Response<Unit>
 
     @Multipart
     @POST("users/me/photo")

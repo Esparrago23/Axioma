@@ -20,6 +20,8 @@ room = "2.6.1"
 paging = "3.3.2"
 biometric = "1.1.0"
 securityCrypto = "1.1.0-alpha06"
+firebaseMessagingKtx = "25.0.1"
+workRuntimeKtx = "2.11.1"
 
 
 [libraries]
@@ -56,6 +58,8 @@ paging-runtime = { group = "androidx.paging", name = "paging-runtime-ktx", versi
 paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "paging" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+firebase-messaging-ktx = { group = "com.google.firebase", name = "firebase-messaging-ktx", version.ref = "firebaseMessagingKtx" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
