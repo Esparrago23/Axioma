@@ -11,12 +11,12 @@ import com.patatus.axioma.features.notifications.data.datasources.remote.api.Not
 import com.patatus.axioma.features.notifications.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.notifications.data.datasources.remote.mapper.toEntity
 import com.patatus.axioma.features.notifications.data.datasources.remote.mediator.NotificationRemoteMediator
-import com.patatus.axioma.features.notifications.data.realtime.NotificationsRealtimeWebSocketDataSource
 import com.patatus.axioma.features.notifications.domain.entities.NotificationEntity
 import com.patatus.axioma.features.notifications.domain.entities.NotificationRealTimeEvent
 import com.patatus.axioma.features.notifications.domain.repository.NotificationRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -25,7 +25,6 @@ import javax.inject.Inject
 class NotificationsRepositoryImpl @Inject constructor(
     private val api: NotificationApiService,
     private val database: AxiomaDatabase,
-    private val realtimeDataSource: NotificationsRealtimeWebSocketDataSource
 ) : NotificationRepository {
 
     @OptIn(ExperimentalPagingApi::class)
@@ -47,7 +46,10 @@ class NotificationsRepositoryImpl @Inject constructor(
     }
 
     override fun observeRealtimeEvents(): Flow<NotificationRealTimeEvent> {
-        return realtimeDataSource.observeEvents()
+        // El backend no expone un endpoint WebSocket para notificaciones.
+        // Las notificaciones en tiempo real llegan vía FCM push →
+        // IncomingPushNotificationHandler → Room. No se necesita WS aquí.
+        return emptyFlow()
     }
 
     override suspend fun applyRealtimeEvent(event: NotificationRealTimeEvent) {
