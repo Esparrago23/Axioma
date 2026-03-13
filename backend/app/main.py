@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.database import init_db
 from app.modules.auth.infrastructure.routes.auth_routes import router as auth_router
 from app.modules.users.infrastructure.routes.user_routes import router as users_router
+from app.modules.notifications.infrastructure.routes.notifications_routes import router as notifications_router
 from app.modules.reports.infrastructure.routes.report_routes import router as reports_router
 
 APP_DIR = Path(__file__).resolve().parent
@@ -26,6 +27,7 @@ app = FastAPI(
 
 app.include_router(auth_router)    
 app.include_router(users_router)  
+app.include_router(notifications_router)
 app.include_router(reports_router) 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 

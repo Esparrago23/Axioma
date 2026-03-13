@@ -23,6 +23,9 @@ class SQLUserRepository(UserRepository):
             user_db.username = user.username
             user_db.full_name = user.full_name
             user_db.profile_picture_url = user.profile_picture_url
+            user_db.fcm_token = user.fcm_token
+            user_db.last_latitude = user.last_latitude
+            user_db.last_longitude = user.last_longitude
             
             self.session.add(user_db)
             self.session.commit()

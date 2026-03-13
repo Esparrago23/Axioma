@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     AWS_BUCKET_NAME: str 
     AWS_ENDPOINT_URL: str | None 
     AWS_PUBLIC_ENDPOINT_URL: str 
+
+    # Firebase Cloud Messaging
+    FIREBASE_CREDENTIALS_JSON: str | None = None
+    FIREBASE_CREDENTIALS_FILE: str | None = None
+    NOTIFICATIONS_RADIUS_KM: float = 5.0
     
     # Configuración para leer el archivo .env automáticamente
     model_config = SettingsConfigDict(

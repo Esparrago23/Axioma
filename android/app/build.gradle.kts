@@ -16,6 +16,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -138,4 +139,8 @@ dependencies {
     // Biometric quick login + secure token storage
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.security.crypto)
+
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
 }
