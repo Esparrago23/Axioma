@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.patatus.axioma.core.hardware.notifications.PushNotificationManager
 import com.patatus.axioma.features.reports.domain.entities.FeedQuery
 import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
@@ -34,7 +35,8 @@ class FeedViewModel @Inject constructor(
     private val getReportsMapUseCase: GetReportsMapUseCase,
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val observeReportRealtimeEventsUseCase: ObserveReportRealtimeEventsUseCase,
-    private val applyReportRealtimeEventUseCase: ApplyReportRealtimeEventUseCase
+    private val applyReportRealtimeEventUseCase: ApplyReportRealtimeEventUseCase,
+    private val pushNotificationManager: PushNotificationManager
 ) : ViewModel() {
 
     private val _userProfile = MutableStateFlow<User?>(null)
@@ -84,6 +86,11 @@ class FeedViewModel @Inject constructor(
             longitude = longitude,
             radiusKm = radiusKm
         )
+
+        viewModelScope.launch {
+            pushNotificationManager.syncLocation(latitude = latitude, longitude = longitude)
+        }
+
         viewModelScope.launch {
             getReportsMapUseCase(latitude, longitude)
                 .onSuccess { reports ->

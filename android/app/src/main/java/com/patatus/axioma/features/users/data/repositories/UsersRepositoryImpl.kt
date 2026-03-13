@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.net.toUri
 import com.patatus.axioma.features.users.data.datasources.remote.api.UsersApiService
 import com.patatus.axioma.features.users.data.datasources.remote.mapper.toDomain
+import com.patatus.axioma.features.users.data.datasources.remote.models.UpdateFcmTokenRequest
 import com.patatus.axioma.features.users.data.datasources.remote.models.UserUpdateRequest
 import com.patatus.axioma.features.users.domain.entities.User
 import com.patatus.axioma.features.users.domain.repositories.UsersRepository
@@ -26,6 +27,35 @@ class UsersRepositoryImpl @Inject constructor(
     override suspend fun getMyProfile(): Result<User> {
         return safeApiCall {
             apiService.getMyProfile().toDomain()
+        }
+    }
+
+    override suspend fun updatePushRegistration(
+        fcmToken: String?,
+        lastLatitude: Double?,
+        lastLongitude: Double?
+    ): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.updateMyFcmToken(
+                    UpdateFcmTokenRequest(
+                        fcmToken = fcmToken,
+                        lastLatitude = lastLatitude,
+                        lastLongitude = lastLongitude
+                    )
+                )
+
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    val message = response.errorBody()?.string().orEmpty()
+                    Result.failure(Exception(message.ifBlank { "No se pudo actualizar el registro push" }))
+                }
+            } catch (e: HttpException) {
+                Result.failure(Exception(parseErrorMessage(e)))
+            } catch (e: Exception) {
+                Result.failure(Exception("Error de conexion. Verifica tu internet."))
+            }
         }
     }
 

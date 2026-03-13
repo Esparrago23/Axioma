@@ -55,7 +55,6 @@ android {
     productFlavors {
         create("dev") {
             dimension = "environment"
-            applicationIdSuffix = ".dev"
             resValue("string", "app_name", "Axioma (DEV)")
             resValue("string", "mapbox_access_token", mapboxToken)
             buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
@@ -143,5 +142,5 @@ dependencies {
 
     // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
-    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-messaging")
 }
