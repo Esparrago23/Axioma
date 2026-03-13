@@ -1,47 +1,37 @@
 package com.patatus.axioma.core.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.patatus.axioma.core.di.AppContainer
-import com.patatus.axioma.features.auth.di.AuthModule
 import com.patatus.axioma.features.auth.presentation.screens.LoginScreen
 import com.patatus.axioma.features.auth.presentation.screens.RegisterScreen
-import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModel
-import com.patatus.axioma.features.auth.presentation.viewmodels.RegisterViewModel
-import com.patatus.axioma.features.reports.di.ReportsModule
+import com.patatus.axioma.features.auth.presentation.viewmodels.AuthViewModel
 import com.patatus.axioma.features.reports.presentation.screens.CreateReportScreen
 import com.patatus.axioma.features.reports.presentation.screens.FeedScreen
 import com.patatus.axioma.features.reports.presentation.screens.ReportDetailScreen
 import com.patatus.axioma.features.reports.presentation.viewmodels.CreateReportViewModel
 import com.patatus.axioma.features.reports.presentation.viewmodels.FeedViewModel
 import com.patatus.axioma.features.reports.presentation.viewmodels.ReportDetailViewModel
+import com.patatus.axioma.features.users.presentation.screens.ProfileScreen
+import com.patatus.axioma.features.users.presentation.viewmodels.ProfileViewModel
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import com.patatus.axioma.features.reports.presentation.screens.MapScreen
+import com.patatus.axioma.features.reports.presentation.ui.MyReportsScreen
+import com.patatus.axioma.features.notifications.presentation.screen.NotificationCenter
 class AppScreens(
-    private val appContainer: AppContainer
+
 ) {
-
-    @Composable
-    private fun rememberAuthModule() =
-        remember(appContainer) { AuthModule(appContainer) }
-
-    @Composable
-    private fun rememberReportsModule() =
-        remember(appContainer) { ReportsModule(appContainer) }
-
     /* ---------------- LOGIN ---------------- */
 
     @Composable
     fun Login(navController: NavController) {
 
-        val authModule = rememberAuthModule()
-
-        val viewModel: LoginViewModel = viewModel(
-            factory = remember(authModule) {
-                authModule.provideLoginViewModelFactory()
-            }
-        )
+        val viewModel: AuthViewModel = hiltViewModel()
 
         LoginScreen(
             viewModel = viewModel,
@@ -62,13 +52,7 @@ class AppScreens(
     @Composable
     fun Register(navController: NavController) {
 
-        val authModule = rememberAuthModule()
-
-        val viewModel: RegisterViewModel = viewModel(
-            factory = remember(authModule) {
-                authModule.provideRegisterViewModelFactory()
-            }
-        )
+        val viewModel: AuthViewModel = hiltViewModel()
 
         RegisterScreen(
             viewModel = viewModel,
@@ -89,18 +73,15 @@ class AppScreens(
     @Composable
     fun Feed(navController: NavController) {
 
-        val reportsModule = rememberReportsModule()
-
-        val viewModel: FeedViewModel = viewModel(
-            factory = remember(reportsModule) {
-                reportsModule.provideFeedViewModelFactory()
-            }
-        )
+        val viewModel: FeedViewModel = hiltViewModel()
 
         FeedScreen(
             viewModel = viewModel,
             onNavigateToCreate = {
                 navController.navigate(AppNavigation.Routes.CREATE_REPORT)
+            },
+            onNavigateToProfile = {
+                navController.navigate(AppNavigation.Routes.PROFILE)
             },
             onNavigateToDetail = { reportId ->
                 navController.navigate(
@@ -115,14 +96,7 @@ class AppScreens(
     @Composable
     fun CreateReport(navController: NavController) {
 
-        val reportsModule = rememberReportsModule()
-
-        val viewModel: CreateReportViewModel = viewModel(
-            factory = remember(reportsModule) {
-                reportsModule.provideCreateReportViewModelFactory()
-            }
-        )
-
+        val viewModel: CreateReportViewModel = hiltViewModel()
         CreateReportScreen(
             viewModel = viewModel,
             onBack = { navController.popBackStack() }
@@ -136,19 +110,59 @@ class AppScreens(
         navController: NavController,
         reportId: Int
     ) {
-
-        val reportsModule = rememberReportsModule()
-
-        val viewModel: ReportDetailViewModel = viewModel(
-            factory = remember(reportsModule) {
-                reportsModule.provideReportDetailViewModelFactory()
-            }
-        )
-
+        val viewModel: ReportDetailViewModel = hiltViewModel()
         ReportDetailScreen(
             reportId = reportId,
             viewModel = viewModel,
             onBack = { navController.popBackStack() }
         )
     }
+
+    /* ---------------- MAPA (Placeholder) ---------------- */
+    @Composable
+    fun Mapa(navController: NavController) {
+
+        val viewModel: FeedViewModel = hiltViewModel()
+
+        MapScreen(
+            viewModel = viewModel
+        )
+    }
+
+    /* ---------------- MIS REPORTES (Placeholder) ---------------- */
+    @Composable
+    fun MisReportes(navController: NavController) {
+        MyReportsScreen(
+            onReportClick = { reportId ->
+                navController.navigate("report_detail/$reportId")
+            }
+        )
+    }
+
+    @Composable
+    fun Profile(navController: NavController) {
+        val viewModel: ProfileViewModel = hiltViewModel()
+        ProfileScreen(
+            viewModel = viewModel,
+            onBack = { navController.popBackStack() },
+            onLoggedOut = {
+                navController.navigate(AppNavigation.Routes.LOGIN) {
+                    popUpTo(0)
+                    launchSingleTop = true
+                }
+            },
+            onAccountDeleted = {
+                navController.navigate(AppNavigation.Routes.LOGIN) {
+                    popUpTo(0)
+                    launchSingleTop = true
+                }
+            }
+        )
+    }
+    @Composable
+    fun Notifications(navController: NavController) {
+        NotificationCenter()
+    }
 }
+
+

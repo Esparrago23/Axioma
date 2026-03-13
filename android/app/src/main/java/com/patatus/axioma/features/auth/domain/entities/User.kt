@@ -4,5 +4,6 @@ data class User(
     val userId: Int,
     val username: String,
     val accessToken: String,
+    val refreshToken: String,
     val reputation: Int
 )

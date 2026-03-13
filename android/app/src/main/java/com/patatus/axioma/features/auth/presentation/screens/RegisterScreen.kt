@@ -1,21 +1,49 @@
 package com.patatus.axioma.features.auth.presentation.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -24,25 +52,23 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.patatus.axioma.R
-import com.patatus.axioma.features.auth.presentation.viewmodels.RegisterViewModel
+import com.patatus.axioma.features.auth.presentation.viewmodels.AuthViewModel
 
 @Composable
 fun RegisterScreen(
-    viewModel: RegisterViewModel,
+    viewModel: AuthViewModel = hiltViewModel(),
     onRegisterSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
-    val email by viewModel.email.collectAsStateWithLifecycle()
-    val password by viewModel.password.collectAsStateWithLifecycle()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    // Estado local para visualización de UI (no afecta la lógica de negocio)
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var passwordVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState) {
-        if (uiState is RegisterUiState.Success) {
+    LaunchedEffect(state.status) {
+        if (state.status is AuthStatus.SuccessRegister) {
+            viewModel.resetState()
             onRegisterSuccess()
         }
     }
@@ -56,7 +82,7 @@ fun RegisterScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()), // Scroll por si pantallas pequeñas
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -69,7 +95,6 @@ fun RegisterScreen(
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop
             )
-
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -88,10 +113,8 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // 2. Formulario Estilizado
-
-            // Campo Email
             OutlinedTextField(
-                value = email,
+                value = state.email,
                 onValueChange = { viewModel.onEmailChanged(it) },
                 label = { Text("Correo Electrónico") },
                 placeholder = { Text("ejemplo@usuario.com") },
@@ -111,9 +134,8 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo Password con Toggle
             OutlinedTextField(
-                value = password,
+                value = state.password,
                 onValueChange = { viewModel.onPasswordChanged(it) },
                 label = { Text("Contraseña") },
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
@@ -138,7 +160,7 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Mensajes de Error con mejor visibilidad
-            if (uiState is RegisterUiState.Error) {
+            if (state.status is AuthStatus.Error) {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
                     shape = RoundedCornerShape(8.dp),
@@ -156,7 +178,7 @@ fun RegisterScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = (uiState as RegisterUiState.Error).message,
+                            text = (state.status as AuthStatus.Error).message,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -173,12 +195,12 @@ fun RegisterScreen(
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                enabled = uiState !is RegisterUiState.Loading,
+                enabled = state.status !is AuthStatus.Loading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                if (uiState is RegisterUiState.Loading) {
+                if (state.status is AuthStatus.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
@@ -205,7 +227,12 @@ fun RegisterScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                TextButton(onClick = onNavigateToLogin) {
+                TextButton(
+                    onClick = {
+                        viewModel.resetState()
+                        onNavigateToLogin()
+                    }
+                ) {
                     Text(
                         "Inicia sesión",
                         fontWeight = FontWeight.Bold,

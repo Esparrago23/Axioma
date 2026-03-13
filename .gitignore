@@ -11,7 +11,12 @@ __pycache__/
 venv/
 .env
 *.pyc
+backend/secrets/*.json
 
 # --- OS ---
 .DS_Store
 Thumbs.db
+
+android/gradle-*.zip
+.venv
+google-services.json

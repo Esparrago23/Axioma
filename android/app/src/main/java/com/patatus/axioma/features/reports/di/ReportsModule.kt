@@ -1,40 +1,35 @@
 package com.patatus.axioma.features.reports.di
 
-import com.patatus.axioma.core.di.AppContainer
-import com.patatus.axioma.features.reports.domain.usecases.CreateReportUseCase
-import com.patatus.axioma.features.reports.domain.usecases.GetReportDetailUseCase
-import com.patatus.axioma.features.reports.domain.usecases.GetReportsFeedUseCase
-import com.patatus.axioma.features.reports.domain.usecases.VoteReportUseCase
-import com.patatus.axioma.features.reports.domain.usecases.UpdateReportUseCase
-import com.patatus.axioma.features.reports.domain.usecases.DeleteReportUseCase
-import com.patatus.axioma.features.reports.presentation.viewmodels.CreateReportViewModelFactory
-import com.patatus.axioma.features.reports.presentation.viewmodels.FeedViewModelFactory
-import com.patatus.axioma.features.reports.presentation.viewmodels.ReportDetailViewModelFactory
+import com.patatus.axioma.core.di.ApiRetrofit
+import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsApiService
+import com.patatus.axioma.features.reports.data.repositories.ReportsRepositoryImpl
+import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
+import dagger.Binds
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import retrofit2.Retrofit
+import javax.inject.Singleton
 
-class ReportsModule(private val appContainer: AppContainer) {
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ReportsModuleBinds {
+    @Binds
+    @Singleton
+    abstract fun bindReportsRepository(
+        impl: ReportsRepositoryImpl
+    ): ReportsRepository
+}
 
-    private fun provideCreateReportUseCase() = CreateReportUseCase(appContainer.reportsRepository)
-    private fun provideGetReportsFeedUseCase() = GetReportsFeedUseCase(appContainer.reportsRepository)
-    private fun provideGetReportDetailUseCase() = GetReportDetailUseCase(appContainer.reportsRepository)
-    private fun provideVoteReportUseCase() = VoteReportUseCase(appContainer.reportsRepository)
-    private fun provideDeleteReportUseCase() = DeleteReportUseCase(appContainer.reportsRepository)
-    private fun provideUpdateReportUseCase() = UpdateReportUseCase(appContainer.reportsRepository)
-
-    fun provideCreateReportViewModelFactory(): CreateReportViewModelFactory {
-        return CreateReportViewModelFactory(provideCreateReportUseCase())
-    }
-
-
-    fun provideFeedViewModelFactory(): FeedViewModelFactory {
-        return FeedViewModelFactory(provideGetReportsFeedUseCase())
-    }
-
-    fun provideReportDetailViewModelFactory(): ReportDetailViewModelFactory {
-        return ReportDetailViewModelFactory(
-            provideGetReportDetailUseCase(),
-            provideVoteReportUseCase(),
-            provideDeleteReportUseCase(),
-            provideUpdateReportUseCase()
-        )
+@Module
+@InstallIn(SingletonComponent::class)
+object ReportsModuleProvides {
+    @Provides
+    @Singleton
+    fun provideReportsApiService(
+        @ApiRetrofit retrofit: Retrofit
+    ): ReportsApiService {
+        return retrofit.create(ReportsApiService::class.java)
     }
 }

@@ -2,7 +2,16 @@ package com.patatus.axioma.features.auth.presentation.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,53 +19,75 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.patatus.axioma.R
-import com.patatus.axioma.features.auth.presentation.viewmodels.LoginUiState
-import com.patatus.axioma.features.auth.presentation.viewmodels.LoginViewModel
+import com.patatus.axioma.features.auth.presentation.viewmodels.AuthViewModel
 
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel,
+    viewModel: AuthViewModel = hiltViewModel(),
     onNavigateHome: () -> Unit,
     onNavigateToRegister: () -> Unit
 ) {
-
-    val email by viewModel.email.collectAsStateWithLifecycle()
-    val password by viewModel.password.collectAsStateWithLifecycle()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var passwordVisible by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
     val scrollState = rememberScrollState()
 
+    LaunchedEffect(activity) {
+        activity?.let { viewModel.checkBiometricAvailability(it) }
+    }
+
     /* ---------- Navegación segura ---------- */
-    LaunchedEffect(uiState is LoginUiState.Success) {
-        if (uiState is LoginUiState.Success) {
+    LaunchedEffect(state.status) {
+        if (state.status is AuthStatus.SuccessLogin) {
+            viewModel.resetState()
             onNavigateHome()
         }
     }
 
-    val errorState = uiState as? LoginUiState.Error
+    val errorState = state.status as? AuthStatus.Error
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -65,9 +96,7 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
             Spacer(modifier = Modifier.height(32.dp))
-
 
             Image(
                 painter = painterResource(R.drawable.logo),
@@ -77,7 +106,6 @@ fun LoginScreen(
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop
             )
-
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -98,9 +126,8 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             /* ---------- EMAIL ---------- */
-
             OutlinedTextField(
-                value = email,
+                value = state.email,
                 onValueChange = viewModel::onEmailChanged,
                 label = { Text("Correo electrónico") },
                 leadingIcon = {
@@ -118,9 +145,8 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             /* ---------- PASSWORD ---------- */
-
             OutlinedTextField(
-                value = password,
+                value = state.password,
                 onValueChange = viewModel::onPasswordChanged,
                 label = { Text("Contraseña") },
                 leadingIcon = {
@@ -131,19 +157,13 @@ fun LoginScreen(
                         onClick = { passwordVisible = !passwordVisible }
                     ) {
                         Icon(
-                            if (passwordVisible)
-                                Icons.Default.Visibility
-                            else
-                                Icons.Default.VisibilityOff,
+                            if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             contentDescription = "Mostrar contraseña"
                         )
                     }
                 },
                 visualTransformation =
-                    if (passwordVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation(),
+                    if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
@@ -156,7 +176,6 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             /* ---------- ERROR ---------- */
-
             errorState?.let {
                 Card(
                     colors = CardDefaults.cardColors(
@@ -170,31 +189,25 @@ fun LoginScreen(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
             /* ---------- BUTTON ---------- */
-
             Button(
                 onClick = viewModel::onLogin,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = uiState !is LoginUiState.Loading,
+                enabled = state.status !is AuthStatus.Loading,
                 shape = RoundedCornerShape(16.dp)
             ) {
-
-                if (uiState is LoginUiState.Loading) {
-
+                if (state.status is AuthStatus.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
-
                 } else {
-
                     Text(
                         "Ingresar",
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -204,21 +217,43 @@ fun LoginScreen(
                 }
             }
 
+            if (state.biometricAvailable && state.quickLoginAvailable) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        if (activity == null) {
+                            viewModel.onBiometricPromptError("No se pudo iniciar la detección de huellas")
+                            return@Button
+                        }
+                        viewModel.showBiometricPrompt(activity)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    enabled = state.status !is AuthStatus.Loading,
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Fingerprint,
+                        contentDescription = null,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Inicio rápido con huella")
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             /* ---------- REGISTER ---------- */
-
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Text(
                     "¿No tienes cuenta?",
                     style = MaterialTheme.typography.bodyMedium
                 )
-
                 Spacer(modifier = Modifier.width(4.dp))
-
                 Text(
                     "Regístrate",
                     style = MaterialTheme.typography.bodyMedium.copy(
@@ -226,6 +261,7 @@ fun LoginScreen(
                         color = MaterialTheme.colorScheme.primary
                     ),
                     modifier = Modifier.clickable {
+                        viewModel.resetState()
                         onNavigateToRegister()
                     }
                 )

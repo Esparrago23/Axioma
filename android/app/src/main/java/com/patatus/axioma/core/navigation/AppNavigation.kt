@@ -1,13 +1,41 @@
 package com.patatus.axioma.core.navigation
 
+// --- IMPORTS DE ANIMACIÓN ---
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+// ----------------------------
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.patatus.axioma.core.di.AppContainer
+import androidx.compose.material.icons.filled.NotificationsNone
+// Clase auxiliar para definir los items de la barra inferior
+data class BottomNavItem(val route: String, val title: String, val icon: ImageVector)
 
 object AppNavigation {
 
@@ -15,45 +43,108 @@ object AppNavigation {
         const val LOGIN = "login"
         const val REGISTER = "register"
         const val FEED = "feed"
+        const val MAPA = "mapa"
+        const val MIS_REPORTES = "mis_reportes"
+        const val PROFILE = "profile"
         const val CREATE_REPORT = "create_report"
         const val REPORT_DETAIL = "report_detail/{reportId}"
+
+        // En Routes
+        const val NOTIFICATIONS = "notifications"
 
         fun reportDetail(id: Int) = "report_detail/$id"
     }
 
     @Composable
-    fun Graph(appContainer: AppContainer) {
+    fun Graph() {
         val navController = rememberNavController()
+        val screens = remember { AppScreens() }
 
-        val screens = remember { AppScreens(appContainer) }
+        // Observar la ruta actual de navegación
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentRoute = navBackStackEntry?.destination?.route
 
-        NavHost(
-            navController = navController,
-            startDestination = Routes.LOGIN
-        ) {
+        // Solo mostramos la barra inferior en estas rutas específicas
+        val bottomBarRoutes = listOf(Routes.FEED, Routes.MAPA, Routes.MIS_REPORTES, Routes.NOTIFICATIONS)
+        val showBottomBar = currentRoute in bottomBarRoutes
 
-            composable(Routes.LOGIN) {
-                screens.Login(navController)
+        Scaffold(
+            bottomBar = {
+                // --- ANIMACIÓN DE LA BARRA INFERIOR ---
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                ) {
+                    NavigationBar {
+                        val bottomNavItems = listOf(
+                            BottomNavItem(Routes.FEED, "Inicio", Icons.Default.Home),
+                            BottomNavItem(Routes.MAPA, "Mapa", Icons.Default.Map),
+                            BottomNavItem(Routes.MIS_REPORTES, "Mis Reportes", Icons.Default.List),
+                            BottomNavItem(Routes.NOTIFICATIONS, "Notificaciones", Icons.Default.NotificationsNone),
+                            BottomNavItem(Routes.CREATE_REPORT, "Reportar", Icons.Default.AddCircle)
+                        )
+
+                        bottomNavItems.forEach { item ->
+                            val isSelected = currentRoute == item.route
+                            NavigationBarItem(
+                                icon = { Icon(item.icon, contentDescription = item.title) },
+                                label = { Text(item.title) },
+                                selected = isSelected,
+                                onClick = {
+                                    if (!isSelected) {
+                                        navController.navigate(item.route) {
+                                            // PopUp hasta el inicio para no acumular vistas infinitas en el stack
+                                            popUpTo(Routes.FEED) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
             }
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = Routes.LOGIN,
+                modifier = Modifier.padding(innerPadding),
+                // --- ANIMACIONES DE TRANSICIÓN DE PANTALLAS ---
+                enterTransition = {
+                    slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } + fadeIn(animationSpec = tween(300))
+                },
+                exitTransition = {
+                    slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } + fadeOut(animationSpec = tween(300))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(animationSpec = tween(300)) { fullWidth -> -fullWidth } + fadeIn(animationSpec = tween(300))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth } + fadeOut(animationSpec = tween(300))
+                }
+            ) {
 
-            composable(Routes.REGISTER) {
-                screens.Register(navController)
-            }
+                composable(Routes.LOGIN) { screens.Login(navController) }
+                composable(Routes.REGISTER) { screens.Register(navController) }
+                composable(Routes.FEED) { screens.Feed(navController) }
 
-            composable(Routes.FEED) {
-                screens.Feed(navController)
-            }
+                composable(Routes.MAPA) { screens.Mapa(navController) }
+                composable(Routes.MIS_REPORTES) { screens.MisReportes(navController) }
 
-            composable(Routes.CREATE_REPORT) {
-                screens.CreateReport(navController)
-            }
+                composable(Routes.NOTIFICATIONS) { screens.Notifications(navController) }
 
-            composable(
-                route = Routes.REPORT_DETAIL,
-                arguments = listOf(navArgument("reportId") { type = NavType.IntType })
-            ) { backStackEntry ->
-                val reportId = backStackEntry.arguments?.getInt("reportId") ?: 0
-                screens.ReportDetail(navController, reportId)
+                composable(Routes.PROFILE) { screens.Profile(navController) }
+                composable(Routes.CREATE_REPORT) { screens.CreateReport(navController) }
+
+                composable(
+                    route = Routes.REPORT_DETAIL,
+                    arguments = listOf(navArgument("reportId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val reportId = backStackEntry.arguments?.getInt("reportId") ?: 0
+                    screens.ReportDetail(navController, reportId)
+                }
             }
         }
     }

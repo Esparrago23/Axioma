@@ -1,6 +1,11 @@
 package com.patatus.axioma.features.reports.domain.repositories
-import com.patatus.axioma.features.reports.domain.entities.Report
+
+import androidx.paging.PagingData
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteResponse
+import com.patatus.axioma.features.reports.domain.entities.FeedQuery
+import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
+import kotlinx.coroutines.flow.Flow
 
 interface ReportsRepository {
     suspend fun createReport(
@@ -8,16 +13,20 @@ interface ReportsRepository {
         desc: String,
         lat: Double,
         long: Double,
-        category: String
+        category: String,
+        photoUrl: String? = null
     ): Result<Report>
 
-    suspend fun getReportsFeed(offset: Int): Result<List<Report>>
+    suspend fun uploadReportPhoto(localUri: String): Result<String>
+    fun getReportsFeed(query: FeedQuery): Flow<PagingData<Report>>
     suspend fun getReportsMap(lat: Double, long: Double): Result<List<Report>>
     suspend fun getReportDetail(id: Int): Result<Report>
-
-    suspend fun updateReport(id: Int, title: String?, desc: String?): Result<Report>
-
+    suspend fun updateReport(id: Int, title: String, desc: String, photoUrl: String?): Result<Report>
     suspend fun deleteReport(id: Int): Result<Boolean>
-
     suspend fun voteReport(id: Int, isUpvote: Boolean): Result<VoteResponse>
+
+    suspend fun getMyReports(search: String? = null): Result<List<Report>>
+
+    fun observeRealtimeEvents(): Flow<ReportRealtimeEvent>
+    suspend fun applyRealtimeEvent(event: ReportRealtimeEvent)
 }
