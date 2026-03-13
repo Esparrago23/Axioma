@@ -51,13 +51,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.fragment.app.FragmentActivity
 import com.patatus.axioma.R
-import com.patatus.axioma.core.hardware.biometric.BiometricAuthManager
-import com.patatus.axioma.core.hardware.biometric.BiometricAvailability
-import com.patatus.axioma.features.auth.presentation.viewmodels.AuthUiState
 import com.patatus.axioma.features.auth.presentation.viewmodels.AuthViewModel
 
 @Composable
@@ -66,39 +63,31 @@ fun LoginScreen(
     onNavigateHome: () -> Unit,
     onNavigateToRegister: () -> Unit
 ) {
-
-    val email by viewModel.email.collectAsStateWithLifecycle()
-    val password by viewModel.password.collectAsStateWithLifecycle()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val biometricAvailable by viewModel.biometricAvailable.collectAsStateWithLifecycle()
-    val quickLoginAvailable by viewModel.quickLoginAvailable.collectAsStateWithLifecycle()
-
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var passwordVisible by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
     val activity = context as? FragmentActivity
-
     val scrollState = rememberScrollState()
 
     LaunchedEffect(activity) {
-        val availability = activity?.let { BiometricAuthManager.checkAvailability(it) }
-        viewModel.onBiometricAvailabilityChanged(availability == BiometricAvailability.AVAILABLE)
+        activity?.let { viewModel.checkBiometricAvailability(it) }
     }
 
     /* ---------- Navegación segura ---------- */
-    LaunchedEffect(uiState) {
-        if (uiState is AuthUiState.SuccessLogin) {
+    LaunchedEffect(state.status) {
+        if (state.status is AuthStatus.SuccessLogin) {
             viewModel.resetState()
             onNavigateHome()
         }
     }
 
-    val errorState = uiState as? AuthUiState.Error
+    val errorState = state.status as? AuthStatus.Error
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -107,7 +96,6 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
             Spacer(modifier = Modifier.height(32.dp))
 
             Image(
@@ -138,9 +126,8 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             /* ---------- EMAIL ---------- */
-
             OutlinedTextField(
-                value = email,
+                value = state.email,
                 onValueChange = viewModel::onEmailChanged,
                 label = { Text("Correo electrónico") },
                 leadingIcon = {
@@ -158,9 +145,8 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             /* ---------- PASSWORD ---------- */
-
             OutlinedTextField(
-                value = password,
+                value = state.password,
                 onValueChange = viewModel::onPasswordChanged,
                 label = { Text("Contraseña") },
                 leadingIcon = {
@@ -171,19 +157,13 @@ fun LoginScreen(
                         onClick = { passwordVisible = !passwordVisible }
                     ) {
                         Icon(
-                            if (passwordVisible)
-                                Icons.Default.Visibility
-                            else
-                                Icons.Default.VisibilityOff,
+                            if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             contentDescription = "Mostrar contraseña"
                         )
                     }
                 },
                 visualTransformation =
-                    if (passwordVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation(),
+                    if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
@@ -196,7 +176,6 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             /* ---------- ERROR ---------- */
-
             errorState?.let {
                 Card(
                     colors = CardDefaults.cardColors(
@@ -210,31 +189,25 @@ fun LoginScreen(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
             /* ---------- BUTTON ---------- */
-
             Button(
                 onClick = viewModel::onLogin,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = uiState !is AuthUiState.Loading,
+                enabled = state.status !is AuthStatus.Loading,
                 shape = RoundedCornerShape(16.dp)
             ) {
-
-                if (uiState is AuthUiState.Loading) {
-
+                if (state.status is AuthStatus.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
-
                 } else {
-
                     Text(
                         "Ingresar",
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -244,26 +217,21 @@ fun LoginScreen(
                 }
             }
 
-            if (biometricAvailable && quickLoginAvailable) {
+            if (state.biometricAvailable && state.quickLoginAvailable) {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
                     onClick = {
                         if (activity == null) {
-                            viewModel.onBiometricPromptError("No se pudo iniciar la deteccion de huellas")
+                            viewModel.onBiometricPromptError("No se pudo iniciar la detección de huellas")
                             return@Button
                         }
-
-                        BiometricAuthManager.authenticate(
-                            activity = activity,
-                            onSuccess = { viewModel.onQuickLogin() },
-                            onError = { message -> viewModel.onBiometricPromptError(message) },
-                        )
+                        viewModel.showBiometricPrompt(activity)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    enabled = uiState !is AuthUiState.Loading,
+                    enabled = state.status !is AuthStatus.Loading,
                     shape = RoundedCornerShape(14.dp),
                 ) {
                     Icon(
@@ -271,25 +239,21 @@ fun LoginScreen(
                         contentDescription = null,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Inicio rapido con huella")
+                    Text("Inicio rápido con huella")
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             /* ---------- REGISTER ---------- */
-
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Text(
                     "¿No tienes cuenta?",
                     style = MaterialTheme.typography.bodyMedium
                 )
-
                 Spacer(modifier = Modifier.width(4.dp))
-
                 Text(
                     "Regístrate",
                     style = MaterialTheme.typography.bodyMedium.copy(

@@ -1,14 +1,20 @@
 package com.patatus.axioma.features.auth.presentation.viewmodels
 
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.patatus.axioma.core.hardware.biometric.BiometricAuthManager
+import com.patatus.axioma.core.hardware.biometric.BiometricAvailability
 import com.patatus.axioma.features.auth.domain.usecases.HasQuickSessionUseCase
 import com.patatus.axioma.features.auth.domain.usecases.LoginUseCase
 import com.patatus.axioma.features.auth.domain.usecases.QuickLoginUseCase
 import com.patatus.axioma.features.auth.domain.usecases.RegisterUseCase
+import com.patatus.axioma.features.auth.presentation.screens.AuthState
+import com.patatus.axioma.features.auth.presentation.screens.AuthStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,114 +24,123 @@ class AuthViewModel @Inject constructor(
     private val registerUseCase: RegisterUseCase,
     private val quickLoginUseCase: QuickLoginUseCase,
     private val hasQuickSessionUseCase: HasQuickSessionUseCase,
+    private val biometricAuthManager: BiometricAuthManager
 ) : ViewModel() {
-
-    private val _email = MutableStateFlow("")
-    val email = _email.asStateFlow()
-
-    private val _password = MutableStateFlow("")
-    val password = _password.asStateFlow()
-
-    private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
-    val uiState = _uiState.asStateFlow()
-
-    private val _biometricAvailable = MutableStateFlow(false)
-    val biometricAvailable = _biometricAvailable.asStateFlow()
-
-    private val _quickLoginAvailable = MutableStateFlow(false)
-    val quickLoginAvailable = _quickLoginAvailable.asStateFlow()
+    private val _state = MutableStateFlow(AuthState())
+    val state = _state.asStateFlow()
 
     init {
-        _quickLoginAvailable.value = hasQuickSessionUseCase()
+        _state.update { it.copy(quickLoginAvailable = hasQuickSessionUseCase()) }
     }
 
     fun onEmailChanged(value: String) {
-        _email.value = value
+        _state.update { it.copy(email = value) }
     }
 
     fun onPasswordChanged(value: String) {
-        _password.value = value
+        _state.update { it.copy(password = value) }
+    }
+
+    fun checkBiometricAvailability(activity: FragmentActivity) {
+        val availability = biometricAuthManager.checkAvailability(activity)
+        _state.update {
+            it.copy(biometricAvailable = (availability == BiometricAvailability.AVAILABLE))
+        }
+    }
+
+    fun showBiometricPrompt(activity: FragmentActivity) {
+        biometricAuthManager.authenticate(
+            activity = activity,
+            onSuccess = { onQuickLogin() },
+            onError = { message -> onBiometricPromptError(message) }
+        )
     }
 
     fun onLogin() {
-        if (_email.value.isBlank() || _password.value.isBlank()) {
-            _uiState.value = AuthUiState.Error("Llena todos los campos.")
+        val currentState = _state.value
+        if (currentState.email.isBlank() || currentState.password.isBlank()) {
+            _state.update { it.copy(status = AuthStatus.Error("Llena todos los campos.")) }
             return
         }
 
         viewModelScope.launch {
-            _uiState.value = AuthUiState.Loading
+            _state.update { it.copy(status = AuthStatus.Loading) }
 
-            val result = loginUseCase(_email.value, _password.value)
+            val result = loginUseCase(currentState.email, currentState.password)
 
             result.onSuccess { user ->
-                _uiState.value = AuthUiState.SuccessLogin(user.username)
+                _state.update { it.copy(status = AuthStatus.SuccessLogin(user.username)) }
             }.onFailure { error ->
-                _uiState.value = AuthUiState.Error(error.message ?: "Error desconocido al iniciar sesión")
+                _state.update {
+                    it.copy(status = AuthStatus.Error(error.message ?: "Error desconocido"))
+                }
             }
         }
     }
 
     fun onRegister() {
-        if (_email.value.isBlank() || _password.value.isBlank()) {
-            _uiState.value = AuthUiState.Error("Llena todos los campos.")
+        val currentState = _state.value
+        if (currentState.email.isBlank() || currentState.password.isBlank()) {
+            _state.update { it.copy(status = AuthStatus.Error("Llena todos los campos.")) }
             return
         }
 
         viewModelScope.launch {
-            _uiState.value = AuthUiState.Loading
+            _state.update { it.copy(status = AuthStatus.Loading) }
 
-            val result = registerUseCase(_email.value, _password.value)
+            val result = registerUseCase(currentState.email, currentState.password)
 
             result.onSuccess {
-                _uiState.value = AuthUiState.SuccessRegister
+                _state.update { it.copy(status = AuthStatus.SuccessRegister) }
             }.onFailure { error ->
-                _uiState.value = AuthUiState.Error(error.message ?: "Error desconocido al registrar")
+                _state.update {
+                    it.copy(status = AuthStatus.Error(error.message ?: "Error desconocido al registrar"))
+                }
             }
         }
     }
 
-    fun onBiometricAvailabilityChanged(isAvailable: Boolean) {
-        _biometricAvailable.value = isAvailable
-    }
-
     fun onQuickLogin() {
-        if (!_biometricAvailable.value || !_quickLoginAvailable.value) {
-            _uiState.value = AuthUiState.Error("El inicio rapido no esta disponible en este dispositivo")
+        val currentState = _state.value
+        if (!currentState.biometricAvailable || !currentState.quickLoginAvailable) {
+            _state.update { it.copy(status = AuthStatus.Error("El inicio rápido no está disponible en este dispositivo")) }
             return
         }
 
         viewModelScope.launch {
-            _uiState.value = AuthUiState.Loading
+            _state.update { it.copy(status = AuthStatus.Loading) }
 
             quickLoginUseCase()
                 .onSuccess { user ->
-                    _quickLoginAvailable.value = true
-                    _uiState.value = AuthUiState.SuccessLogin(user.username)
+                    _state.update {
+                        it.copy(
+                            quickLoginAvailable = true,
+                            status = AuthStatus.SuccessLogin(user.username)
+                        )
+                    }
                 }
                 .onFailure { error ->
-                    _quickLoginAvailable.value = hasQuickSessionUseCase()
-                    _uiState.value = AuthUiState.Error(
-                        error.message ?: "No se pudo iniciar sesion rapida"
-                    )
+                    _state.update {
+                        it.copy(
+                            quickLoginAvailable = hasQuickSessionUseCase(),
+                            status = AuthStatus.Error(error.message ?: "No se pudo iniciar sesión rápida")
+                        )
+                    }
                 }
         }
     }
 
     fun onBiometricPromptError(message: String) {
-        _uiState.value = AuthUiState.Error(message)
+        _state.update { it.copy(status = AuthStatus.Error(message)) }
     }
 
     fun resetState() {
-        _uiState.value = AuthUiState.Idle
-        _quickLoginAvailable.value = hasQuickSessionUseCase()
+        _state.update {
+            it.copy(
+                status = AuthStatus.Idle,
+                quickLoginAvailable = hasQuickSessionUseCase()
+            )
+        }
     }
 }
 
-sealed class AuthUiState {
-    object Idle : AuthUiState()
-    object Loading : AuthUiState()
-    object SuccessRegister : AuthUiState()
-    data class SuccessLogin(val username: String) : AuthUiState()
-    data class Error(val message: String) : AuthUiState()
-}
