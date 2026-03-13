@@ -10,6 +10,7 @@ import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import com.patatus.axioma.features.reports.domain.usecases.ApplyReportRealtimeEventUseCase
 import com.patatus.axioma.features.reports.domain.usecases.GetReportsFeedUseCase
+import com.patatus.axioma.features.reports.domain.usecases.GetReportsMapUseCase
 import com.patatus.axioma.features.reports.domain.usecases.ObserveReportRealtimeEventsUseCase
 import com.patatus.axioma.features.users.domain.entities.User
 import com.patatus.axioma.features.users.domain.usecases.GetUserProfileUseCase
@@ -30,6 +31,7 @@ import kotlin.math.sqrt
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     private val getReportsFeedUseCase: GetReportsFeedUseCase,
+    private val getReportsMapUseCase: GetReportsMapUseCase,
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val observeReportRealtimeEventsUseCase: ObserveReportRealtimeEventsUseCase,
     private val applyReportRealtimeEventUseCase: ApplyReportRealtimeEventUseCase
@@ -42,6 +44,8 @@ class FeedViewModel @Inject constructor(
     private val _feedQuery = MutableStateFlow(FeedQuery())
     val feedQuery = _feedQuery.asStateFlow()
 
+    private val _mapReports = MutableStateFlow<List<Report>>(emptyList())
+    val mapReports: StateFlow<List<Report>> = _mapReports.asStateFlow()
     val reportsFeed: Flow<PagingData<Report>> = _feedQuery
         .flatMapLatest { query -> getReportsFeedUseCase(query) }
         .cachedIn(viewModelScope)
@@ -80,6 +84,17 @@ class FeedViewModel @Inject constructor(
             longitude = longitude,
             radiusKm = radiusKm
         )
+        viewModelScope.launch {
+            getReportsMapUseCase(latitude, longitude)
+                .onSuccess { reports ->
+                    android.util.Log.d("FeedViewModel", "mapReports recibidos: ${reports.size}")
+                    reports.forEach { android.util.Log.d("FeedViewModel", "  -> ${it.id} lat=${it.latitude} lng=${it.longitude}") }
+                    _mapReports.value = reports
+                }
+                .onFailure { error ->
+                    android.util.Log.e("FeedViewModel", "error al cargar mapa: ${error.message}")
+                }
+        }
     }
 
     private fun shouldApplyRealtimeEvent(event: ReportRealtimeEvent, query: FeedQuery): Boolean {
