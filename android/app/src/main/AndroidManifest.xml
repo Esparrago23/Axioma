@@ -24,7 +24,7 @@
         android:usesCleartextTraffic="true">
         <service
             android:name=".AxiomaFirebaseMessagingService"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
