@@ -122,6 +122,82 @@ Respuesta de `GET /notifications/`:
 3. El backend guarda una fila por destinatario en la tabla `notifications`.
 4. Si Firebase esta configurado, envia el push multicast.
 
+## Checklist de validacion Firebase
+
+### 1. Verificar configuracion del backend
+
+Confirma que exista este archivo real:
+
+- `backend/secrets/firebase-service-account.json`
+
+Y que [backend/.env](backend/.env) tenga:
+
+```env
+FIREBASE_CREDENTIALS_FILE=/run/secrets/firebase-service-account.json
+```
+
+### 2. Reiniciar la API
+
+Desde la raiz del repo:
+
+```powershell
+docker compose up -d --build api
+```
+
+### 3. Revisar logs de arranque
+
+```powershell
+docker compose logs api --tail=100
+```
+
+Resultado esperado:
+
+- No debe aparecer `Firebase deshabilitado`.
+- La API debe arrancar normal.
+
+### 4. Probar envio manual a un token real
+
+De momento necesitas un `FCM token` valido de algun dispositivo de prueba. Sin ese token no puedes validar el envio real end-to-end.
+
+Ya deje un script de prueba en [backend/scripts/send_test_push.py](backend/scripts/send_test_push.py).
+
+Opcion Docker:
+
+```powershell
+docker compose exec api env PYTHONPATH=. python scripts/send_test_push.py --token "TU_FCM_TOKEN" --title "Prueba Axioma" --body "Push enviada desde backend"
+```
+
+Opcion local con la venv:
+
+```powershell
+C:/Users/minis/OneDrive/Escritorio/Axioma/Axioma/.venv/Scripts/python.exe backend/scripts/send_test_push.py --token "TU_FCM_TOKEN" --credentials-file "c:/Users/minis/OneDrive/Escritorio/Axioma/Axioma/backend/secrets/firebase-service-account.json"
+```
+
+Resultado esperado:
+
+```json
+{
+  "success": 1,
+  "failure": 0
+}
+```
+
+### 5. Probar el flujo de negocio completo cuando ya haya token registrado
+
+1. Registrar token y ubicacion en `PATCH /users/me/fcm-token`.
+2. Crear un reporte nuevo cerca de esa ubicacion con `POST /reports/`.
+3. Verificar que el usuario receptor vea una fila en `GET /notifications/`.
+4. Verificar que el dispositivo reciba la push.
+5. Marcarla como leida con `PATCH /notifications/{id}/read`.
+
+### 6. Si falla
+
+Casos comunes:
+
+- `Firebase deshabilitado`: falta el archivo o la ruta de `FIREBASE_CREDENTIALS_FILE` no coincide.
+- `success: 0`: el token es invalido, expiro o pertenece a otra configuracion Firebase.
+- La fila aparece en `GET /notifications/` pero no llega push: el backend guardo historial, pero Firebase rechazo el token o el dispositivo no tiene FCM operativo.
+
 ## Nota para Docker
 
 Si se usa `FIREBASE_CREDENTIALS_FILE` dentro de contenedores, la ruta debe existir dentro del contenedor `api`.
