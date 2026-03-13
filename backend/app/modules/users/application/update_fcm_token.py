@@ -11,7 +11,9 @@ class UpdateFcmTokenUseCase:
     def execute(
         self,
         user_id: int,
+        has_fcm_token: bool,
         fcm_token: str | None,
+        has_location: bool,
         last_latitude: float | None,
         last_longitude: float | None,
     ) -> User:
@@ -19,12 +21,20 @@ class UpdateFcmTokenUseCase:
         if not user:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-        user.fcm_token = fcm_token
+        if not has_fcm_token and not has_location:
+            raise HTTPException(status_code=400, detail="Debes enviar fcm_token o ubicacion")
 
-        if fcm_token is None:
-            user.last_latitude = None
-            user.last_longitude = None
-        else:
+        if has_fcm_token:
+            user.fcm_token = fcm_token
+
+            if fcm_token is None:
+                user.last_latitude = None
+                user.last_longitude = None
+                return self.repository.update(user)
+
+        if has_location:
+            if user.fcm_token is None:
+                raise HTTPException(status_code=400, detail="No puedes guardar ubicacion sin un fcm_token registrado")
             user.last_latitude = last_latitude
             user.last_longitude = last_longitude
 
