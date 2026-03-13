@@ -22,7 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.patatus.axioma.features.reports.presentation.screens.MapScreen
 import com.patatus.axioma.features.reports.presentation.ui.MyReportsScreen
-
+import com.patatus.axioma.features.notifications.presentation.screen.NotificationCenter
 class AppScreens(
 
 ) {
@@ -159,4 +159,10 @@ class AppScreens(
             }
         )
     }
+    @Composable
+    fun Notifications(navController: NavController) {
+        NotificationCenter()
+    }
 }
+
+

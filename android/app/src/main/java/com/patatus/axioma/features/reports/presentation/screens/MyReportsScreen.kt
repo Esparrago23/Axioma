@@ -1,5 +1,6 @@
 package com.patatus.axioma.features.reports.presentation.ui
 
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.patatus.axioma.features.reports.presentation.viewmodels.MyReportsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,9 +25,22 @@ fun MyReportsScreen(
     onReportClick: (Int) -> Unit, // Función para navegar al detalle
     viewModel: MyReportsViewModel = hiltViewModel()
 ) {
-    val reports by viewModel.reports.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
+    val reports by viewModel.reports.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshReports()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Buscador

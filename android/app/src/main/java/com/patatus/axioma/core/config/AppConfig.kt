@@ -5,6 +5,7 @@ import com.patatus.axioma.BuildConfig
 data class NetworkConfig(
     val apiBaseUrl: String,
     val reportsWebSocketUrl: String,
+    val notificationsWebSocketUrl: String,
     val connectTimeoutSeconds: Long,
     val readTimeoutSeconds: Long,
     val writeTimeoutSeconds: Long
@@ -15,6 +16,7 @@ object AppConfig {
         NetworkConfig(
             apiBaseUrl = BuildConfig.BASE_URL_API,
             reportsWebSocketUrl = BuildConfig.BASE_URL_API.toWebSocketBaseUrl() + "reports/ws",
+            notificationsWebSocketUrl = BuildConfig.BASE_URL_API.toWebSocketBaseUrl() + "notifications/ws",
             connectTimeoutSeconds = 30L,
             readTimeoutSeconds = 30L,
             writeTimeoutSeconds = 30L
