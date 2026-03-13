@@ -77,6 +77,7 @@ import com.patatus.axioma.features.users.presentation.viewmodels.ProfileViewMode
 fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
     onBack: () -> Unit,
+    onLoggedOut: () -> Unit,
     onAccountDeleted: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -125,6 +126,12 @@ fun ProfileScreen(
     LaunchedEffect(state.deletedAccount) {
         if (state.deletedAccount) {
             onAccountDeleted()
+        }
+    }
+
+    LaunchedEffect(state.loggedOut) {
+        if (state.loggedOut) {
+            onLoggedOut()
         }
     }
 
@@ -443,8 +450,19 @@ fun ProfileScreen(
 
             // Botón de eliminar cuenta
             TextButton(
+                onClick = { viewModel.logout() },
+                enabled = !state.isSaving && !state.isDeleting && !state.isLoggingOut,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = if (state.isLoggingOut) "Cerrando sesión..." else "Cerrar sesión",
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            TextButton(
                 onClick = { showDeleteConfirmationDialog = true },
-                enabled = !state.isSaving && !state.isDeleting,
+                enabled = !state.isSaving && !state.isDeleting && !state.isLoggingOut,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(

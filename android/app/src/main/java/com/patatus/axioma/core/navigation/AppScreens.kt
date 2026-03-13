@@ -145,6 +145,12 @@ class AppScreens(
         ProfileScreen(
             viewModel = viewModel,
             onBack = { navController.popBackStack() },
+            onLoggedOut = {
+                navController.navigate(AppNavigation.Routes.LOGIN) {
+                    popUpTo(0)
+                    launchSingleTop = true
+                }
+            },
             onAccountDeleted = {
                 navController.navigate(AppNavigation.Routes.LOGIN) {
                     popUpTo(0)
