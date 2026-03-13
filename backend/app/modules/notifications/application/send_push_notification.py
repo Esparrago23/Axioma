@@ -36,14 +36,18 @@ class SendPushNotificationUseCase:
         ]
         self.repository.save_many(notifications)
 
-        self.firebase_client.send_push_notification(
-            tokens=[recipient.fcm_token for recipient in recipients],
-            title=title,
-            body=message,
-            data={
-                "type": notification_type,
-                "report_id": str(report.id),
-                "category": report.category.value,
-            },
-        )
+        tokens = [recipient.fcm_token for recipient in recipients]
+        max_tokens_per_batch = 500
+        for start in range(0, len(tokens), max_tokens_per_batch):
+            batch_tokens = tokens[start : start + max_tokens_per_batch]
+            self.firebase_client.send_push_notification(
+                tokens=batch_tokens,
+                title=title,
+                body=message,
+                data={
+                    "type": notification_type,
+                    "report_id": str(report.id),
+                    "category": report.category.value,
+                },
+            )
         return len(notifications)
