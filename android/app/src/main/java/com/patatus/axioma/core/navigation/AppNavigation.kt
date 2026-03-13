@@ -33,7 +33,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-
+import androidx.compose.material.icons.filled.NotificationsNone
 // Clase auxiliar para definir los items de la barra inferior
 data class BottomNavItem(val route: String, val title: String, val icon: ImageVector)
 
@@ -49,6 +49,9 @@ object AppNavigation {
         const val CREATE_REPORT = "create_report"
         const val REPORT_DETAIL = "report_detail/{reportId}"
 
+        // En Routes
+        const val NOTIFICATIONS = "notifications"
+
         fun reportDetail(id: Int) = "report_detail/$id"
     }
 
@@ -62,7 +65,7 @@ object AppNavigation {
         val currentRoute = navBackStackEntry?.destination?.route
 
         // Solo mostramos la barra inferior en estas rutas específicas
-        val bottomBarRoutes = listOf(Routes.FEED, Routes.MAPA, Routes.MIS_REPORTES)
+        val bottomBarRoutes = listOf(Routes.FEED, Routes.MAPA, Routes.MIS_REPORTES, Routes.NOTIFICATIONS)
         val showBottomBar = currentRoute in bottomBarRoutes
 
         Scaffold(
@@ -78,6 +81,7 @@ object AppNavigation {
                             BottomNavItem(Routes.FEED, "Inicio", Icons.Default.Home),
                             BottomNavItem(Routes.MAPA, "Mapa", Icons.Default.Map),
                             BottomNavItem(Routes.MIS_REPORTES, "Mis Reportes", Icons.Default.List),
+                            BottomNavItem(Routes.NOTIFICATIONS, "Notificaciones", Icons.Default.NotificationsNone),
                             BottomNavItem(Routes.CREATE_REPORT, "Reportar", Icons.Default.AddCircle)
                         )
 
@@ -128,6 +132,8 @@ object AppNavigation {
 
                 composable(Routes.MAPA) { screens.Mapa(navController) }
                 composable(Routes.MIS_REPORTES) { screens.MisReportes(navController) }
+
+                composable(Routes.NOTIFICATIONS) { screens.Notifications(navController) }
 
                 composable(Routes.PROFILE) { screens.Profile(navController) }
                 composable(Routes.CREATE_REPORT) { screens.CreateReport(navController) }

@@ -24,8 +24,11 @@ class NotificationViewmodel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            android.util.Log.d("NotificationVM", "Iniciando observación de eventos realtime")
             repository.observeRealtimeEvents().collect { event ->
+                android.util.Log.d("NotificationVM", "Evento recibido: $event")
                 repository.applyRealtimeEvent(event)
+                android.util.Log.d("NotificationVM", "Evento aplicado a Room")
             }
         }
     }
