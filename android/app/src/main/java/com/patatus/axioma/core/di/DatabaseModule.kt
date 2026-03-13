@@ -27,6 +27,31 @@ object DatabaseModule {
         }
     }
 
+    private val migration2To3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                """CREATE TABLE IF NOT EXISTS `notifications` (
+                    `id` INTEGER NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `body` TEXT NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `referenceId` INTEGER,
+                    `createdAt` TEXT NOT NULL,
+                    `isRead` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )"""
+            )
+            database.execSQL(
+                """CREATE TABLE IF NOT EXISTS `notification_remote_keys` (
+                    `notificationId` INTEGER NOT NULL,
+                    `prevKey` INTEGER,
+                    `nextKey` INTEGER,
+                    PRIMARY KEY(`notificationId`)
+                )"""
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAxiomaDatabase(
@@ -36,7 +61,7 @@ object DatabaseModule {
             context,
             AxiomaDatabase::class.java,
             "axioma_database"
-        ).addMigrations(migration1To2)
+        ).addMigrations(migration1To2, migration2To3)
 
         return if (BuildConfig.DEBUG) {
             builder.fallbackToDestructiveMigration().build()

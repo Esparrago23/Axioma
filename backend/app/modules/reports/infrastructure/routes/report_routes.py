@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import suppress
 from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Response, UploadFile, WebSocket, WebSocketDisconnect, status
 from typing import List
@@ -213,6 +214,6 @@ async def reports_websocket(
         pass
     finally:
         forward_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await forward_task
         await reports_realtime_broker.unsubscribe(queue)
-        if websocket.application_state == WebSocketState.CONNECTED:
-            await websocket.close()
