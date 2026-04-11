@@ -223,7 +223,7 @@ fun CreateReportScreen(
             // 1. Input de Título
             OutlinedTextField(
                 value = title.value,
-                onValueChange = { viewModel.title.value = it },
+                onValueChange = { viewModel.onTitleChanged(it) },
                 label = { Text("¿Qué está pasando?") },
                 placeholder = { Text("Ej: Bache enorme en la calle") },
                 leadingIcon = { Icon(Icons.Default.Title, contentDescription = null) },
@@ -269,7 +269,7 @@ fun CreateReportScreen(
                         DropdownMenuItem(
                             text = { Text(selectionOption) },
                             onClick = {
-                                viewModel.category.value = selectionOption
+                                viewModel.onCategoryChanged(selectionOption)
                                 expanded = false
                             },
                             contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
@@ -281,7 +281,7 @@ fun CreateReportScreen(
             // 3. Input de Descripción
             OutlinedTextField(
                 value = description.value,
-                onValueChange = { viewModel.description.value = it },
+                onValueChange = { viewModel.onDescriptionChanged(it) },
                 label = { Text("Detalles del problema") },
                 placeholder = { Text("Describe la situación con más detalle...") },
                 leadingIcon = {
