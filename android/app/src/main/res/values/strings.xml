@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">Axioma</string>
     <string name="mapbox_access_token">MAPBOX_ACCESS_TOKEN</string>
+    <string-array name="report_categories">
+        <item>INFRAESTRUCTURA</item>
+        <item>SEGURIDAD</item>
+        <item>SANITIZACION</item>
+        <item>VANDALISMO</item>
+        <item>SOCIAL</item>
+    </string-array>
 </resources>

@@ -55,31 +55,15 @@ class ReportsRepositoryImpl @Inject constructor(
         category: String,
         photoUrl: String?
     ): Result<Report> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val request = ReportCreateRequest(
-                    title = title,
-                    description = desc,
-                    category = category,
-                    latitude = lat,
-                    longitude = long,
-                    photoUrl = photoUrl
-                )
-                val response = api.createReport(request)
-                val entity = response.toDomain()
-                Result.success(entity)
-            } catch (e: HttpException) {
-                val errorBody = e.response()?.errorBody()?.string()
-                val errorMessage = try {
-                    JSONObject(errorBody).getString("detail")
-                } catch (jsonException: Exception) {
-                    "Error desconocido en el servidor (${e.code()})"
-                }
-                Result.failure(Exception(errorMessage))
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
+        val request = ReportCreateRequest(
+            title = title,
+            description = desc,
+            category = category,
+            latitude = lat,
+            longitude = long,
+            photoUrl = photoUrl
+        )
+        return safeApiCall { api.createReport(request).toDomain() }
     }
 
     override suspend fun uploadReportPhoto(localUri: String): Result<String> {

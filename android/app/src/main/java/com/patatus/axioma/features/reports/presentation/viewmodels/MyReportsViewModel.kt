@@ -26,6 +26,9 @@ class MyReportsViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage = _errorMessage.asStateFlow()
+
     private var searchJob: Job? = null
 
     init {
@@ -45,12 +48,20 @@ class MyReportsViewModel @Inject constructor(
         loadMyReports(_searchQuery.value.ifBlank { null })
     }
 
+    fun consumeError() { _errorMessage.value = null }
+
     private fun loadMyReports(query: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
             getMyReportsUseCase(query)
-                .onSuccess { _reports.value = it }
-                .onFailure { _reports.value = emptyList() } // Opcional: manejar error en UI
+                .onSuccess {
+                    _reports.value = it
+                    _errorMessage.value = null
+                }
+                .onFailure {
+                    _reports.value = emptyList()
+                    _errorMessage.value = it.message ?: "No se pudieron cargar los reportes"
+                }
             _isLoading.value = false
         }
     }

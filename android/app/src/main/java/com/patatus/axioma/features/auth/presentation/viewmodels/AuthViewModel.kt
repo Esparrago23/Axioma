@@ -94,6 +94,7 @@ class AuthViewModel @Inject constructor(
             val result = registerUseCase(currentState.email, currentState.password)
 
             result.onSuccess {
+                syncPushRegistration()
                 _state.update { it.copy(status = AuthStatus.SuccessRegister) }
             }.onFailure { error ->
                 _state.update {

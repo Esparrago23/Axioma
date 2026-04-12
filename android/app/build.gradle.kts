@@ -80,6 +80,10 @@ android {
     }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("org.glassfish.jaxb:jaxb-runtime:4.0.5")

@@ -9,11 +9,16 @@ import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -25,15 +30,26 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
+sealed class WebSocketState {
+    object Disconnected : WebSocketState()
+    object Connecting : WebSocketState()
+    object Connected : WebSocketState()
+    data class Error(val cause: Throwable) : WebSocketState()
+}
+
 @Singleton
 class ReportsRealtimeWebSocketDataSource @Inject constructor(
     @WebSocketOkHttp private val okHttpClient: OkHttpClient,
     private val gson: Gson
 ) {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scopeJob: Job = SupervisorJob()
+    private val scope = CoroutineScope(scopeJob + Dispatchers.IO)
     private val events = MutableSharedFlow<ReportRealtimeEvent>(extraBufferCapacity = 64)
     private val isConnecting = AtomicBoolean(false)
+
+    private val _state = MutableStateFlow<WebSocketState>(WebSocketState.Disconnected)
+    val state: StateFlow<WebSocketState> = _state.asStateFlow()
 
     @Volatile
     private var webSocket: WebSocket? = null
@@ -52,11 +68,20 @@ class ReportsRealtimeWebSocketDataSource @Inject constructor(
             return
         }
 
+        _state.value = WebSocketState.Connecting
+
         val request = Request.Builder()
             .url(AppConfig.network.reportsWebSocketUrl)
             .build()
 
         webSocket = okHttpClient.newWebSocket(request, ReportsWebSocketListener())
+    }
+
+    fun disconnect() {
+        webSocket?.close(1000, "Manual disconnect")
+        webSocket = null
+        scopeJob.cancelChildren()
+        _state.value = WebSocketState.Disconnected
     }
 
     private fun scheduleReconnect() {
@@ -76,6 +101,7 @@ class ReportsRealtimeWebSocketDataSource @Inject constructor(
         override fun onOpen(webSocket: WebSocket, response: Response) {
             reconnectAttempt = 0
             isConnecting.set(false)
+            _state.value = WebSocketState.Connected
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
@@ -95,12 +121,14 @@ class ReportsRealtimeWebSocketDataSource @Inject constructor(
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             this@ReportsRealtimeWebSocketDataSource.webSocket = null
             isConnecting.set(false)
+            _state.value = WebSocketState.Disconnected
             scheduleReconnect()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             this@ReportsRealtimeWebSocketDataSource.webSocket = null
             isConnecting.set(false)
+            _state.value = WebSocketState.Error(t)
             scheduleReconnect()
         }
     }
