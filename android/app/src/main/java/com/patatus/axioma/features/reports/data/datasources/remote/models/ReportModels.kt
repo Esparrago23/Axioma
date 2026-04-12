@@ -46,3 +46,31 @@ data class VoteResponse(
 data class ReportPhotoUploadResponse(
     @SerializedName("photo_url") val photoUrl: String
 )
+
+data class EvolutionResponse(
+    val id: Int,
+    @SerializedName("report_id") val reportId: Int,
+    @SerializedName("user_id") val userId: Int,
+    val type: String,
+    val description: String,
+    @SerializedName("photo_url") val photoUrl: String?,
+    @SerializedName("credibility_score") val credibilityScore: Int,
+    val status: String,
+    @SerializedName("is_valid") val isValid: Boolean,
+    @SerializedName("user_vote") val userVote: Int,
+    @SerializedName("user_latitude") val userLatitude: Double,
+    @SerializedName("user_longitude") val userLongitude: Double,
+    @SerializedName("created_at") val createdAt: String,
+)
+
+data class CreateEvolutionRequest(
+    val type: String,
+    val description: String,
+    @SerializedName("photo_url") val photoUrl: String? = null,
+    @SerializedName("user_latitude") val userLatitude: Double,
+    @SerializedName("user_longitude") val userLongitude: Double,
+)
+
+data class EvolutionVoteRequest(
+    @SerializedName("vote_value") val voteValue: Int
+)

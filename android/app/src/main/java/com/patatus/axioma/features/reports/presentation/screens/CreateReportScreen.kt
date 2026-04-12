@@ -54,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import com.patatus.axioma.R
 import androidx.compose.ui.Alignment
@@ -65,6 +66,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.patatus.axioma.core.hardware.camera.rememberCameraCaptureLauncher
 import com.patatus.axioma.core.hardware.camera.rememberCameraPermissionRequester
+import com.patatus.axioma.core.hardware.location.LocationCapture
+import com.patatus.axioma.core.hardware.location.LocationPermissionStatus
+import com.patatus.axioma.core.hardware.location.LocationResult2
+import com.patatus.axioma.core.hardware.location.rememberLocationPermissionState
 import com.patatus.axioma.features.reports.presentation.viewmodels.CreateReportViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,11 +78,29 @@ fun CreateReportScreen(
     viewModel: CreateReportViewModel = hiltViewModel(),
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val title = viewModel.title.collectAsStateWithLifecycle()
     val description = viewModel.description.collectAsStateWithLifecycle()
     val category = viewModel.category.collectAsStateWithLifecycle()
     val evidencePhotoUri = viewModel.evidencePhotoUri.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val permissionState = rememberLocationPermissionState()
+
+    LaunchedEffect(Unit) {
+        if (permissionState.status != LocationPermissionStatus.GRANTED) {
+            permissionState.requestPermission()
+        }
+    }
+
+    LaunchedEffect(permissionState.status) {
+        if (permissionState.status == LocationPermissionStatus.GRANTED) {
+            val result = LocationCapture(context).getCurrentLocation()
+            if (result is LocationResult2.Success) {
+                viewModel.onLocationChanged(result.coordinates.latitude, result.coordinates.longitude)
+            }
+        }
+    }
 
     var expanded by remember { mutableStateOf(false) }
     var showPhotoSourceSheet by remember { mutableStateOf(false) }

@@ -26,10 +26,10 @@ class CreateReportViewModel @Inject constructor(
     private val _category = MutableStateFlow("INFRAESTRUCTURA")
     val category = _category.asStateFlow()
 
-    private val _latitude = MutableStateFlow(16.75)
+    private val _latitude = MutableStateFlow<Double?>(null)
     val latitude = _latitude.asStateFlow()
 
-    private val _longitude = MutableStateFlow(-93.11)
+    private val _longitude = MutableStateFlow<Double?>(null)
     val longitude = _longitude.asStateFlow()
 
     private val _evidencePhotoUri = MutableStateFlow("")
@@ -49,6 +49,12 @@ class CreateReportViewModel @Inject constructor(
     fun sendReport() {
         if (_title.value.isBlank() || _description.value.isBlank()) {
             _uiState.value = ReportUiState.Error("Ponle título y descripción.")
+            return
+        }
+        val lat = _latitude.value
+        val lng = _longitude.value
+        if (lat == null || lng == null) {
+            _uiState.value = ReportUiState.Error("No se pudo obtener tu ubicación. Asegúrate de tener el GPS activo.")
             return
         }
         viewModelScope.launch {
@@ -72,8 +78,8 @@ class CreateReportViewModel @Inject constructor(
             val result = createReportUseCase(
                 title = _title.value,
                 desc = _description.value,
-                lat = _latitude.value,
-                long = _longitude.value,
+                lat = lat,
+                long = lng,
                 cat = _category.value,
                 photoUrl = uploadedPhotoUrl
             )

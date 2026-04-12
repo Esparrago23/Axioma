@@ -3,9 +3,14 @@ from math import cos, radians
 from typing import List, Optional
 from sqlmodel import Session, select
 from sqlalchemy import and_, desc, func
-from app.modules.reports.domain.entities import Report, Vote, CategoryEnum, ReportStatus
+from app.modules.reports.domain.entities import (
+    Report, Vote, CategoryEnum, ReportStatus,
+    ReportEvolution, EvolutionVote, EvolutionType, EvolutionStatus,
+)
 from app.modules.reports.domain.repository import ReportRepository
-from app.modules.reports.infrastructure.persistence.models import ReportModel, VoteModel
+from app.modules.reports.infrastructure.persistence.models import (
+    ReportModel, VoteModel, ReportEvolutionModel, EvolutionVoteModel,
+)
 
 class SQLReportRepository(ReportRepository):
     def __init__(self, session: Session):
@@ -154,13 +159,129 @@ class SQLReportRepository(ReportRepository):
         return [self._to_domain(r) for r in results]
 
     def _to_domain(self, model: ReportModel) -> Report:
-        # Extraemos todo EXCEPTO category y status para mapearlos manualmente
-        # y así evitar el error de 'multiple values'
         data = model.model_dump(exclude={"category", "status"})
-        
         return Report(
             **data,
-            category=CategoryEnum(model.category), 
+            category=CategoryEnum(model.category),
             status=ReportStatus(model.status),
-            user_vote=0 
+            user_vote=0,
+        )
+
+    def save_evolution(self, evolution: ReportEvolution) -> ReportEvolution:
+        data = evolution.model_dump(exclude={"user_vote"})
+        data["type"] = evolution.type.value
+        data["status"] = evolution.status.value
+        if evolution.id:
+            evo_db = self.session.get(ReportEvolutionModel, evolution.id)
+            for key, value in data.items():
+                setattr(evo_db, key, value)
+        else:
+            evo_db = ReportEvolutionModel(**data)
+            self.session.add(evo_db)
+        self.session.commit()
+        self.session.refresh(evo_db)
+        return self._evolution_to_domain(evo_db)
+
+    def get_evolutions(self, report_id: int, current_user_id: Optional[int] = None) -> List[ReportEvolution]:
+        statement = (
+            select(ReportEvolutionModel)
+            .where(
+                ReportEvolutionModel.report_id == report_id,
+                ReportEvolutionModel.is_valid == True,
+            )
+            .order_by(ReportEvolutionModel.created_at)
+        )
+        results = self.session.exec(statement).all()
+        evolutions = [self._evolution_to_domain(r) for r in results]
+        if current_user_id:
+            for evo in evolutions:
+                vote = self.get_evolution_vote(current_user_id, evo.id)
+                evo.user_vote = vote.vote_value if vote else 0
+        return evolutions
+
+    def get_evolution_by_id(self, evolution_id: int) -> Optional[ReportEvolution]:
+        evo_db = self.session.get(ReportEvolutionModel, evolution_id)
+        return self._evolution_to_domain(evo_db) if evo_db else None
+
+    def save_evolution_vote(self, vote: EvolutionVote) -> EvolutionVote:
+        existing = self.session.exec(
+            select(EvolutionVoteModel).where(
+                EvolutionVoteModel.user_id == vote.user_id,
+                EvolutionVoteModel.evolution_id == vote.evolution_id,
+            )
+        ).first()
+        if existing:
+            existing.vote_value = vote.vote_value
+            self.session.add(existing)
+        else:
+            self.session.add(EvolutionVoteModel(
+                user_id=vote.user_id,
+                evolution_id=vote.evolution_id,
+                vote_value=vote.vote_value,
+            ))
+        self.session.commit()
+        return vote
+
+    def get_evolution_vote(self, user_id: int, evolution_id: int) -> Optional[EvolutionVote]:
+        statement = select(EvolutionVoteModel).where(
+            EvolutionVoteModel.user_id == user_id,
+            EvolutionVoteModel.evolution_id == evolution_id,
+        )
+        result = self.session.exec(statement).first()
+        return EvolutionVote(**result.model_dump()) if result else None
+
+    def delete_evolution_vote(self, user_id: int, evolution_id: int) -> bool:
+        statement = select(EvolutionVoteModel).where(
+            EvolutionVoteModel.user_id == user_id,
+            EvolutionVoteModel.evolution_id == evolution_id,
+        )
+        vote_db = self.session.exec(statement).first()
+        if vote_db:
+            self.session.delete(vote_db)
+            self.session.commit()
+            return True
+        return False
+
+    def get_report_voter_ids(self, report_id: int) -> List[int]:
+        statement = select(VoteModel.user_id).where(VoteModel.report_id == report_id)
+        return list(self.session.exec(statement).all())
+
+    def get_user_pending_evolution(self, report_id: int, user_id: int) -> Optional[ReportEvolution]:
+        statement = select(ReportEvolutionModel).where(
+            ReportEvolutionModel.report_id == report_id,
+            ReportEvolutionModel.user_id == user_id,
+            ReportEvolutionModel.status == EvolutionStatus.PENDING.value,
+            ReportEvolutionModel.is_valid == True,
+        )
+        result = self.session.exec(statement).first()
+        return self._evolution_to_domain(result) if result else None
+
+    def delete_other_pending_evolutions(self, report_id: int, exclude_evolution_id: int) -> None:
+        statement = select(ReportEvolutionModel).where(
+            ReportEvolutionModel.report_id == report_id,
+            ReportEvolutionModel.id != exclude_evolution_id,
+            ReportEvolutionModel.status == EvolutionStatus.PENDING.value,
+            ReportEvolutionModel.is_valid == True,
+        )
+        results = self.session.exec(statement).all()
+        for evo in results:
+            self.session.delete(evo)
+        if results:
+            self.session.commit()
+
+    def delete_evolution(self, evolution_id: int) -> bool:
+        evo_db = self.session.get(ReportEvolutionModel, evolution_id)
+        if evo_db:
+            self.session.delete(evo_db)
+            self.session.commit()
+            return True
+        return False
+
+    def _evolution_to_domain(self, model: ReportEvolutionModel) -> ReportEvolution:
+        data = model.model_dump(exclude={"type", "status"})
+        return ReportEvolution(
+            **data,
+            type=EvolutionType(model.type),
+            status=EvolutionStatus(model.status),
+            user_vote=0,
         )

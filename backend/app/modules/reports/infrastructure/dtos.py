@@ -10,7 +10,7 @@ class CreateReportDTO(BaseModel):
     longitude: float
     category: str
     photo_url: Optional[str] = None
-    
+
 class ReportResponseDTO(BaseModel):
     id: int
     title: str
@@ -35,3 +35,28 @@ class VoteDTO(BaseModel):
 
 class ReportPhotoUploadResponseDTO(BaseModel):
     photo_url: str
+
+class CreateEvolutionDTO(BaseModel):
+    type: str
+    description: str
+    photo_url: Optional[str] = None
+    user_latitude: float
+    user_longitude: float
+
+class EvolutionVoteDTO(BaseModel):
+    vote_value: int
+
+class EvolutionResponseDTO(BaseModel):
+    id: int
+    report_id: int
+    user_id: int
+    type: str
+    description: str
+    photo_url: Optional[str]
+    credibility_score: int
+    status: str
+    is_valid: bool
+    user_vote: int
+    user_latitude: float
+    user_longitude: float
+    created_at: datetime

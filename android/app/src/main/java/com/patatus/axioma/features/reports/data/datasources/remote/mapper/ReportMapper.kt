@@ -1,8 +1,10 @@
 package com.patatus.axioma.features.reports.data.datasources.remote.mapper
 
 import com.patatus.axioma.features.reports.data.datasources.local.db.entities.ReportEntity
+import com.patatus.axioma.features.reports.data.datasources.remote.models.EvolutionResponse
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportResponse
 import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.entities.ReportEvolution
 
 fun ReportResponse.toDomain(): Report {
     return Report(
@@ -71,3 +73,19 @@ fun Report.toEntity(userVote: Int = this.userVote): ReportEntity {
         userVote = userVote
     )
 }
+
+fun EvolutionResponse.toDomain(): ReportEvolution = ReportEvolution(
+    id = id,
+    reportId = reportId,
+    userId = userId,
+    type = type,
+    description = description,
+    photoUrl = photoUrl,
+    credibilityScore = credibilityScore,
+    status = status,
+    isValid = isValid,
+    userVote = userVote,
+    userLatitude = userLatitude,
+    userLongitude = userLongitude,
+    createdAt = createdAt,
+)
