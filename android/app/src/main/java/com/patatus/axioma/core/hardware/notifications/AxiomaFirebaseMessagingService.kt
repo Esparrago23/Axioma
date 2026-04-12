@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -93,9 +94,15 @@ class AxiomaFirebaseMessagingService : FirebaseMessagingService() {
     private fun showNotification(title: String, body: String, referenceId: Int? = null) {
         createChannelIfNeeded()
 
-        val viewIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            referenceId?.let { putExtra("reference_id", it) }
+        val viewIntent = if (referenceId != null) {
+            Intent(Intent.ACTION_VIEW, Uri.parse("axioma://report/$referenceId")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                setPackage(packageName)
+            }
+        } else {
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
         }
 
         val pendingIntent = PendingIntent.getActivity(

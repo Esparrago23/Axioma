@@ -33,6 +33,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import androidx.compose.material.icons.filled.NotificationsNone
 // Clase auxiliar para definir los items de la barra inferior
 data class BottomNavItem(val route: String, val title: String, val icon: ImageVector)
@@ -140,7 +141,10 @@ object AppNavigation {
 
                 composable(
                     route = Routes.REPORT_DETAIL,
-                    arguments = listOf(navArgument("reportId") { type = NavType.IntType })
+                    arguments = listOf(navArgument("reportId") { type = NavType.IntType }),
+                    deepLinks = listOf(
+                        navDeepLink { uriPattern = "axioma://report/{reportId}" }
+                    )
                 ) { backStackEntry ->
                     val reportId = backStackEntry.arguments?.getInt("reportId") ?: 0
                     screens.ReportDetail(navController, reportId)
