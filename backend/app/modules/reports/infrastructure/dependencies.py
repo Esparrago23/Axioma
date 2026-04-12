@@ -16,6 +16,7 @@ from app.modules.reports.application.get_my_reports import GetMyReportsUseCase
 from app.modules.reports.application.get_evolutions import GetEvolutionsUseCase
 from app.modules.reports.application.create_evolution import CreateEvolutionUseCase
 from app.modules.reports.application.vote_evolution import VoteEvolutionUseCase
+from app.modules.reports.application.delete_evolution import DeleteEvolutionUseCase
 
 from app.modules.reports.infrastructure.controllers.create_controller import CreateReportController
 from app.modules.reports.infrastructure.controllers.feed_controller import FeedController
@@ -26,7 +27,7 @@ from app.modules.reports.infrastructure.controllers.vote_controller import VoteR
 from app.modules.reports.infrastructure.controllers.get_all_controller import GetAllReportsController
 from app.modules.reports.infrastructure.controllers.get_my_reports_controller import GetMyReportsController
 from app.modules.reports.infrastructure.controllers.evolution_controller import (
-    GetEvolutionsController, CreateEvolutionController, VoteEvolutionController,
+    GetEvolutionsController, CreateEvolutionController, VoteEvolutionController, DeleteEvolutionController,
 )
 
 
@@ -57,6 +58,8 @@ def get_my_reports_controller(uc=Depends(get_my_reports_uc)): return GetMyReport
 def get_evolutions_controller(uc=Depends(get_evolutions_uc)): return GetEvolutionsController(uc)
 def get_create_evolution_controller(uc=Depends(get_create_evolution_uc)): return CreateEvolutionController(uc)
 def get_vote_evolution_controller(uc=Depends(get_vote_evolution_uc)): return VoteEvolutionController(uc)
+def get_delete_evolution_uc(repo=Depends(get_reports_repo)): return DeleteEvolutionUseCase(repo)
+def get_delete_evolution_controller(uc=Depends(get_delete_evolution_uc)): return DeleteEvolutionController(uc)
 
 def get_update_controller(
     session=Depends(get_session),

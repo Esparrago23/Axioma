@@ -279,6 +279,21 @@ class ReportsRepositoryImpl @Inject constructor(
         api.voteEvolution(evolutionId, EvolutionVoteRequest(if (isUpvote) 1 else -1)).toDomain()
     }
 
+    override suspend fun deleteEvolution(evolutionId: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.deleteEvolution(evolutionId)
+                if (response.isSuccessful) Result.success(true)
+                else {
+                    val msg = try { JSONObject(response.errorBody()?.string()).getString("detail") } catch (e: Exception) { "Error al eliminar" }
+                    Result.failure(Exception(msg))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
     private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
         return withContext(Dispatchers.IO) {
             try {

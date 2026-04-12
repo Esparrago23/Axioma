@@ -86,4 +86,7 @@ interface ReportsApiService {
         @Body vote: EvolutionVoteRequest
     ): EvolutionResponse
 
+    @DELETE("reports/evolutions/{evolutionId}")
+    suspend fun deleteEvolution(@Path("evolutionId") evolutionId: Int): Response<Unit>
+
 }

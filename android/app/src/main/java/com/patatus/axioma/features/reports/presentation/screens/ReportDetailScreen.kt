@@ -4,12 +4,17 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -126,7 +131,9 @@ fun ReportDetailScreen(
                             evolutions = state.evolutions,
                             loading = state.evolutionsLoading,
                             currentUserId = state.currentUserId,
+                            report = state.report,
                             onVoteEvolution = { id, up -> viewModel.toggleEvolutionVote(id, up) },
+                            onDeleteEvolution = { id -> viewModel.deleteEvolution(id) },
                             onAddEvolution = { showAddEvolutionDialog = true }
                         )
 
@@ -171,6 +178,8 @@ fun ReportDetailScreen(
 
                     if (showAddEvolutionDialog) {
                         AddEvolutionDialog(
+                            reportLat = state.report.latitude,
+                            reportLon = state.report.longitude,
                             onDismiss = { showAddEvolutionDialog = false },
                             onConfirm = { type, description, photoUrl, lat, lon ->
                                 viewModel.createEvolution(type, description, photoUrl, lat, lon)
@@ -260,13 +269,23 @@ fun EvolutionSection(
     evolutions: List<ReportEvolution>,
     loading: Boolean,
     currentUserId: Int,
+    report: Report,
     onVoteEvolution: (Int, Boolean) -> Unit,
+    onDeleteEvolution: (Int) -> Unit,
     onAddEvolution: () -> Unit,
 ) {
+    var selectedIndex by remember(evolutions.size) {
+        mutableStateOf(evolutions.size)
+    }
+
     Card(shape = MaterialTheme.shapes.large) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Evolución del reporte", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Historial de evolución", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 FilledTonalButton(onClick = onAddEvolution, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
                     Icon(Icons.Default.Add, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
@@ -274,19 +293,57 @@ fun EvolutionSection(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
 
-            if (loading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).size(24.dp))
-            } else if (evolutions.isEmpty()) {
-                Text("Sin actualizaciones aún. Sé el primero en reportar un cambio.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                evolutions.forEachIndexed { index, evo ->
-                    EvolutionItem(
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                EvolutionTabChip(
+                    icon = Icons.Default.Flag,
+                    chipLabel = "Original",
+                    date = report.createdAt.take(10),
+                    statusColor = MaterialTheme.colorScheme.primary,
+                    statusText = "",
+                    isSelected = selectedIndex == 0,
+                    onClick = { selectedIndex = 0 }
+                )
+                evolutions.forEachIndexed { idx, evo ->
+                    val (icon, color, typeLabel) = evolutionTypeInfo(evo.type)
+                    EvolutionTabChip(
+                        icon = icon,
+                        chipLabel = typeLabel,
+                        date = evo.createdAt.take(10),
+                        statusColor = when (evo.status) {
+                            "CONFIRMED" -> Color(0xFF2E7D32)
+                            "REJECTED"  -> Color(0xFFD32F2F)
+                            else        -> Color(0xFFF57C00)
+                        },
+                        statusText = when (evo.status) {
+                            "CONFIRMED" -> "✓"
+                            "REJECTED"  -> "✗"
+                            else        -> "●"
+                        },
+                        isSelected = selectedIndex == idx + 1,
+                        onClick = { selectedIndex = idx + 1 }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(Modifier.height(16.dp))
+
+            when {
+                loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).size(24.dp))
+                selectedIndex == 0 -> EvolutionOriginPanel(report)
+                selectedIndex <= evolutions.size -> {
+                    val evo = evolutions[selectedIndex - 1]
+                    EvolutionDetailPanel(
                         evolution = evo,
-                        isLast = index == evolutions.lastIndex,
                         currentUserId = currentUserId,
-                        onVote = { isUpvote -> onVoteEvolution(evo.id, isUpvote) }
+                        onVote = { isUpvote -> onVoteEvolution(evo.id, isUpvote) },
+                        onDelete = { onDeleteEvolution(evo.id) }
                     )
                 }
             }
@@ -294,82 +351,223 @@ fun EvolutionSection(
     }
 }
 
+private fun evolutionTypeInfo(type: String): Triple<androidx.compose.ui.graphics.vector.ImageVector, Color, String> = when (type) {
+    "WORSENED"  -> Triple(Icons.Default.TrendingDown,       Color(0xFFD32F2F), "Empeoró")
+    "IMPROVING" -> Triple(Icons.Default.TrendingUp,         Color(0xFF388E3C), "Mejorando")
+    "RESOLVED"  -> Triple(Icons.Default.CheckCircle,        Color(0xFF1976D2), "Resuelto")
+    "ACTIVE"    -> Triple(Icons.Default.RadioButtonChecked, Color(0xFFF57C00), "Sigue activo")
+    "ESCALATED" -> Triple(Icons.Default.Warning,            Color(0xFFD32F2F), "Escaló")
+    else        -> Triple(Icons.Default.Info,                Color.Gray,        type)
+}
+
 @Composable
-fun EvolutionItem(evolution: ReportEvolution, isLast: Boolean, currentUserId: Int, onVote: (Boolean) -> Unit) {
-    val (icon, color, label) = when (evolution.type) {
-        "WORSENED"  -> Triple(Icons.Default.TrendingDown, Color(0xFFD32F2F), "Empeoró")
-        "IMPROVING" -> Triple(Icons.Default.TrendingUp,   Color(0xFF388E3C), "Mejorando")
-        "RESOLVED"  -> Triple(Icons.Default.CheckCircle,  Color(0xFF1976D2), "Resuelto")
-        "ACTIVE"    -> Triple(Icons.Default.RadioButtonChecked, Color(0xFFF57C00), "Sigue activo")
-        "ESCALATED" -> Triple(Icons.Default.Warning,      Color(0xFFD32F2F), "Escaló")
-        else        -> Triple(Icons.Default.Info,          Color.Gray, evolution.type)
-    }
+private fun EvolutionTabChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    chipLabel: String,
+    date: String,
+    statusColor: Color,
+    statusText: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val bg = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
-    val statusColor = when (evolution.status) {
-        "CONFIRMED" -> MaterialTheme.colorScheme.tertiary
-        "REJECTED"  -> MaterialTheme.colorScheme.error
-        else        -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
-            if (!isLast) {
-                Box(modifier = Modifier.width(2.dp).height(40.dp).background(MaterialTheme.colorScheme.outlineVariant))
+    Box(
+        modifier = Modifier
+            .widthIn(min = 76.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .then(
+                if (isSelected) Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                else Modifier
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Icon(
+                icon, null,
+                tint = if (isSelected) MaterialTheme.colorScheme.primary else contentColor,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                chipLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(date, style = MaterialTheme.typography.labelSmall, color = contentColor.copy(alpha = 0.7f))
+                if (statusText.isNotEmpty()) {
+                    Text(statusText, style = MaterialTheme.typography.labelSmall, color = statusColor, fontWeight = FontWeight.Bold)
+                }
             }
         }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-                if (evolution.status != "PENDING") {
+    }
+}
+
+@Composable
+private fun EvolutionOriginPanel(report: Report) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Flag, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            }
+            Column {
+                Text("Reporte original", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(report.createdAt.take(10), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(report.description, style = MaterialTheme.typography.bodyMedium)
+        if (report.photoUrl != null) {
+            Spacer(Modifier.height(10.dp))
+            AsyncImage(
+                model = report.photoUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+    }
+}
+
+@Composable
+private fun EvolutionDetailPanel(
+    evolution: ReportEvolution,
+    currentUserId: Int,
+    onVote: (Boolean) -> Unit,
+    onDelete: () -> Unit,
+) {
+    val (icon, typeColor, label) = evolutionTypeInfo(evolution.type)
+    val statusColor = when (evolution.status) {
+        "CONFIRMED" -> Color(0xFF2E7D32)
+        "REJECTED"  -> MaterialTheme.colorScheme.error
+        else        -> Color(0xFFF57C00)
+    }
+    val statusLabel = when (evolution.status) {
+        "CONFIRMED" -> "✓ Confirmado"
+        "REJECTED"  -> "✗ Rechazado"
+        else        -> "Validando..."
+    }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("¿Eliminar actualización?") },
+            text = { Text("Solo puedes eliminar actualizaciones pendientes.") },
+            confirmButton = {
+                Button(
+                    onClick = { onDelete(); showDeleteConfirm = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Eliminar") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancelar") } }
+        )
+    }
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    modifier = Modifier.size(40.dp).background(typeColor.copy(alpha = 0.15f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = typeColor, modifier = Modifier.size(20.dp))
+                }
+                Column {
+                    Text(label, style = MaterialTheme.typography.titleSmall, color = typeColor, fontWeight = FontWeight.Bold)
+                    Text(evolution.createdAt.take(10), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Surface(shape = RoundedCornerShape(8.dp), color = statusColor.copy(alpha = 0.12f)) {
                     Text(
-                        if (evolution.status == "CONFIRMED") "✓ Confirmado" else "✗ Rechazado",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = statusColor
+                        statusLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = statusColor,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
-            }
-            Text(evolution.description, style = MaterialTheme.typography.bodySmall)
-
-            if (evolution.photoUrl != null) {
-                Spacer(Modifier.height(4.dp))
-                AsyncImage(
-                    model = evolution.photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("${evolution.credibilityScore}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                if (evolution.userId != currentUserId) {
-                    TextButton(
-                        onClick = { onVote(true) },
-                        contentPadding = PaddingValues(horizontal = 4.dp),
-                    ) {
-                        Icon(
-                            if (evolution.userVote == 1) Icons.Default.ThumbUp else Icons.Default.ThumbUp,
-                            null,
-                            Modifier.size(14.dp),
-                            tint = if (evolution.userVote == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(
-                        onClick = { onVote(false) },
-                        contentPadding = PaddingValues(horizontal = 4.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.ThumbDown,
-                            null,
-                            Modifier.size(14.dp),
-                            tint = if (evolution.userVote == -1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                if (evolution.userId == currentUserId && evolution.status == "PENDING") {
+                    IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                     }
                 }
             }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Text(evolution.description, style = MaterialTheme.typography.bodyMedium)
+
+        if (evolution.photoUrl != null) {
+            Spacer(Modifier.height(10.dp))
+            AsyncImage(
+                model = evolution.photoUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        if (evolution.status != "REJECTED") {
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "¿Esto es correcto?",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = { onVote(true) },
+                    modifier = Modifier.weight(1f),
+                    colors = if (evolution.userVote == 1)
+                        ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                    else ButtonDefaults.filledTonalButtonColors()
+                ) {
+                    Icon(Icons.Default.ThumbUp, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Confirmar")
+                }
+                Button(
+                    onClick = { onVote(false) },
+                    modifier = Modifier.weight(1f),
+                    colors = if (evolution.userVote == -1)
+                        ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    else ButtonDefaults.filledTonalButtonColors()
+                ) {
+                    Icon(Icons.Default.ThumbDown, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Rechazar")
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "${evolution.credibilityScore} votos registrados",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -474,6 +672,8 @@ fun CommentItem(comment: Comment, isOwn: Boolean, onDelete: () -> Unit) {
 
 @Composable
 fun AddEvolutionDialog(
+    reportLat: Double,
+    reportLon: Double,
     onDismiss: () -> Unit,
     onConfirm: (type: String, description: String, photoUrl: String?, lat: Double, lon: Double) -> Unit
 ) {
@@ -481,9 +681,8 @@ fun AddEvolutionDialog(
     var selectedType by remember { mutableStateOf("ACTIVE") }
     var description by remember { mutableStateOf("") }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
-    var userLat by remember { mutableStateOf(0.0) }
-    var userLon by remember { mutableStateOf(0.0) }
-    var locationChecked by remember { mutableStateOf(false) }
+    var userLat by remember { mutableStateOf(reportLat) }
+    var userLon by remember { mutableStateOf(reportLon) }
 
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
@@ -494,13 +693,8 @@ fun AddEvolutionDialog(
                 if (location != null) {
                     userLat = location.latitude
                     userLon = location.longitude
-                    locationChecked = true
-                } else {
-                    Toast.makeText(context, "No se pudo obtener la ubicación", Toast.LENGTH_SHORT).show()
                 }
-            } catch (e: SecurityException) {
-                Toast.makeText(context, "Permiso de ubicación denegado", Toast.LENGTH_SHORT).show()
-            }
+            } catch (_: SecurityException) {}
         }
     }
 
@@ -525,15 +719,6 @@ fun AddEvolutionDialog(
         title = { Text("Reportar actualización") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                if (!locationChecked) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Verificando ubicación...", style = MaterialTheme.typography.bodySmall)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                }
-
                 Text("¿Qué cambió?", style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(8.dp))
 
@@ -587,7 +772,7 @@ fun AddEvolutionDialog(
         confirmButton = {
             Button(
                 onClick = { onConfirm(selectedType, description, photoUri?.toString(), userLat, userLon) },
-                enabled = locationChecked && description.trim().isNotEmpty()
+                enabled = description.trim().isNotEmpty()
             ) { Text("Publicar") }
         },
         dismissButton = {

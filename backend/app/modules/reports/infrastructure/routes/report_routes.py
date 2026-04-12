@@ -25,6 +25,7 @@ from app.modules.reports.infrastructure.dependencies import (
     get_evolutions_controller,
     get_create_evolution_controller,
     get_vote_evolution_controller,
+    get_delete_evolution_controller,
 )
 
 from app.modules.auth.infrastructure.dependencies import get_auth_repo, get_current_user, get_user_from_access_token
@@ -199,6 +200,16 @@ def create_evolution(
     user = Depends(get_current_user)
 ):
     return controller.run(report_id=id, user_id=user.id, dto=data)
+
+
+@router.delete("/evolutions/{evolution_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_evolution(
+    evolution_id: int,
+    controller = Depends(get_delete_evolution_controller),
+    user = Depends(get_current_user)
+):
+    controller.run(evolution_id=evolution_id, user_id=user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/evolutions/{evolution_id}/vote", response_model=EvolutionResponseDTO)

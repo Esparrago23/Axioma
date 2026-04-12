@@ -18,9 +18,6 @@ class VoteEvolutionUseCase:
         if evolution is None or not evolution.is_valid:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evolución no encontrada")
 
-        if evolution.user_id == user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No puedes votar tu propia actualización")
-
         was_confirmed_before = evolution.status == EvolutionStatus.CONFIRMED
 
         existing = self.repo.get_evolution_vote(user_id, evolution_id)
@@ -41,15 +38,15 @@ class VoteEvolutionUseCase:
         self.repo.save_evolution(evolution)
 
         if evolution.status == EvolutionStatus.CONFIRMED and not was_confirmed_before:
-            if evolution.type.value == "RESOLVED":
-                report = self.repo.get_by_id(evolution.report_id)
-                if report and report.status == ReportStatus.ACTIVE:
-                    report.status = ReportStatus.RESOLVED
-                    self.repo.save(report)
-
-            voter_ids = self.repo.get_report_voter_ids(evolution.report_id)
             report = self.repo.get_by_id(evolution.report_id)
             if report:
+                if evolution.type.value == "RESOLVED" and report.status == ReportStatus.ACTIVE:
+                    report.status = ReportStatus.RESOLVED
+                report.description = evolution.description
+                if evolution.photo_url:
+                    report.photo_url = evolution.photo_url
+                self.repo.save(report)
+                voter_ids = self.repo.get_report_voter_ids(evolution.report_id)
                 self.notify_uc.execute(evolution=evolution, report=report, voter_ids=voter_ids)
 
         evolution.user_vote = dto.vote_value

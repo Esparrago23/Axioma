@@ -47,3 +47,6 @@ class ReportRepository(ABC):
 
     @abstractmethod
     def get_report_voter_ids(self, report_id: int) -> List[int]: pass
+
+    @abstractmethod
+    def delete_evolution(self, evolution_id: int) -> bool: pass

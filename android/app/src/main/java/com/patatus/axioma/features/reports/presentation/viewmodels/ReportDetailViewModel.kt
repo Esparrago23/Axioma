@@ -10,6 +10,7 @@ import com.patatus.axioma.features.reports.domain.entities.Report
 import com.patatus.axioma.features.reports.domain.entities.ReportEvolution
 import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import com.patatus.axioma.features.reports.domain.usecases.*
+import com.patatus.axioma.features.reports.domain.usecases.DeleteEvolutionUseCase
 import com.patatus.axioma.features.users.domain.usecases.GetUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,7 @@ class ReportDetailViewModel @Inject constructor(
     private val getEvolutionsUseCase: GetEvolutionsUseCase,
     private val createEvolutionUseCase: CreateEvolutionUseCase,
     private val voteEvolutionUseCase: VoteEvolutionUseCase,
+    private val deleteEvolutionUseCase: DeleteEvolutionUseCase,
     private val getCommentsUseCase: GetCommentsUseCase,
     private val createCommentUseCase: CreateCommentUseCase,
     private val deleteCommentUseCase: DeleteCommentUseCase,
@@ -145,6 +147,9 @@ class ReportDetailViewModel @Inject constructor(
                             evolutions = s.evolutions.map { if (it.id == updated.id) updated else it }
                         )
                     }
+                    if (updated.status == "CONFIRMED") {
+                        currentReportId?.let { loadReport(it) }
+                    }
                 }
         }
     }
@@ -165,6 +170,18 @@ class ReportDetailViewModel @Inject constructor(
                     }
                 }
                 .onFailure { _evolutionError.value = it.message ?: "No se pudo publicar la actualización" }
+        }
+    }
+
+    fun deleteEvolution(evolutionId: Int) {
+        viewModelScope.launch {
+            deleteEvolutionUseCase(evolutionId)
+                .onSuccess {
+                    (_uiState.value as? DetailUiState.Success)?.let { s ->
+                        _uiState.value = s.copy(evolutions = s.evolutions.filter { it.id != evolutionId })
+                    }
+                }
+                .onFailure { _evolutionError.value = it.message ?: "No se pudo eliminar la actualización" }
         }
     }
 

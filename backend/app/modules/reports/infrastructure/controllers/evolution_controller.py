@@ -2,6 +2,7 @@ from typing import List, Optional
 from app.modules.reports.application.get_evolutions import GetEvolutionsUseCase
 from app.modules.reports.application.create_evolution import CreateEvolutionUseCase
 from app.modules.reports.application.vote_evolution import VoteEvolutionUseCase
+from app.modules.reports.application.delete_evolution import DeleteEvolutionUseCase
 from app.modules.reports.infrastructure.dtos import (
     CreateEvolutionDTO, EvolutionVoteDTO, EvolutionResponseDTO,
 )
@@ -48,3 +49,11 @@ class VoteEvolutionController:
 
     def run(self, evolution_id: int, user_id: int, dto: EvolutionVoteDTO) -> EvolutionResponseDTO:
         return self.uc.execute(evolution_id, user_id, dto)
+
+
+class DeleteEvolutionController:
+    def __init__(self, uc: DeleteEvolutionUseCase):
+        self.uc = uc
+
+    def run(self, evolution_id: int, user_id: int) -> None:
+        self.uc.execute(evolution_id, user_id)

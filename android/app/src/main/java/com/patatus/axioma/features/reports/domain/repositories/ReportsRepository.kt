@@ -39,4 +39,5 @@ interface ReportsRepository {
         userLon: Double,
     ): Result<ReportEvolution>
     suspend fun voteEvolution(evolutionId: Int, isUpvote: Boolean): Result<ReportEvolution>
+    suspend fun deleteEvolution(evolutionId: Int): Result<Boolean>
 }
