@@ -12,10 +12,12 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.patatus.axioma.MainActivity
+import com.patatus.axioma.R
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,7 +30,8 @@ class AxiomaFirebaseMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var incomingPushNotificationHandler: IncomingPushNotificationHandler
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val serviceScopeJob = SupervisorJob()
+    private val serviceScope = CoroutineScope(serviceScopeJob + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -78,36 +81,53 @@ class AxiomaFirebaseMessagingService : FirebaseMessagingService() {
             )
         }
 
-        showNotification(title = title, body = body)
+        showNotification(title = title, body = body, referenceId = referenceId)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+    }
 
     @SuppressLint("MissingPermission")
-    private fun showNotification(title: String, body: String) {
+    private fun showNotification(title: String, body: String, referenceId: Int? = null) {
         createChannelIfNeeded()
 
-        val intent = Intent(this, MainActivity::class.java).apply {
+        val viewIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            referenceId?.let { putExtra("reference_id", it) }
         }
 
         val pendingIntent = PendingIntent.getActivity(
             this,
             1001,
-            intent,
+            viewIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder) // <-- Temporal genérico
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .setGroup(NOTIFICATION_GROUP)
+            .addAction(R.drawable.ic_launcher_foreground, "Ver", pendingIntent)
             .build()
 
-        NotificationManagerCompat.from(this).notify(System.currentTimeMillis().toInt(), notification)
+        val notifManager = NotificationManagerCompat.from(this)
+        notifManager.notify(System.currentTimeMillis().toInt(), notification)
+
+        val summaryNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setGroup(NOTIFICATION_GROUP)
+            .setGroupSummary(true)
+            .setAutoCancel(true)
+            .build()
+
+        notifManager.notify(SUMMARY_NOTIFICATION_ID, summaryNotification)
     }
 
     private fun createChannelIfNeeded() {
@@ -126,5 +146,7 @@ class AxiomaFirebaseMessagingService : FirebaseMessagingService() {
 
     companion object {
         private const val CHANNEL_ID = "axioma_alerts"
+        private const val NOTIFICATION_GROUP = "axioma_reports_group"
+        private const val SUMMARY_NOTIFICATION_ID = 0
     }
 }
