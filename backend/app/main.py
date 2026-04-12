@@ -8,6 +8,7 @@ from app.modules.auth.infrastructure.routes.auth_routes import router as auth_ro
 from app.modules.users.infrastructure.routes.user_routes import router as users_router
 from app.modules.notifications.infrastructure.routes.notifications_routes import router as notifications_router
 from app.modules.reports.infrastructure.routes.report_routes import router as reports_router
+from app.modules.comments.infrastructure.routes.comment_routes import router as comments_router
 
 APP_DIR = Path(__file__).resolve().parent
 STATIC_DIR = APP_DIR / "static"
@@ -25,10 +26,11 @@ app = FastAPI(
 )
 
 
-app.include_router(auth_router)    
-app.include_router(users_router)  
+app.include_router(auth_router)
+app.include_router(users_router)
 app.include_router(notifications_router)
-app.include_router(reports_router) 
+app.include_router(reports_router)
+app.include_router(comments_router)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 @app.get("/")

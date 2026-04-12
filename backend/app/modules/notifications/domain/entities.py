@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class NotificationType(str, Enum):
     NEW_NEARBY_REPORT = "NEW_NEARBY_REPORT"
+    EVOLUTION_CONFIRMED = "EVOLUTION_CONFIRMED"
 
 
 class NotificationRecipient(BaseModel):

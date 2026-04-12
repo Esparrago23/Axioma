@@ -233,14 +233,24 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             mapViewportState = mapViewportState
         ) {
+            feedQuery.latitude?.let { lat ->
+                feedQuery.longitude?.let { lng ->
+                    PointAnnotation(point = Point.fromLngLat(lng, lat)) {
+                        iconImage = IconImage(userMarkerBitmap)
+                        iconSize = iconScale
+                    }
+                }
+            }
+
             groupedReports.forEach { (_, group) ->
-                val first = group.first()
+                val centerLat = group.map { it.latitude }.average()
+                val centerLng = group.map { it.longitude }.average()
                 val markerBitmap = if (group.size == 1) singleReportBitmap else clusterBitmap(group.size)
                 PointAnnotation(
-                    point = Point.fromLngLat(first.longitude, first.latitude),
+                    point = Point.fromLngLat(centerLng, centerLat),
                     onClick = {
                         if (group.size == 1) {
-                            onNavigateToDetail(first.id)
+                            onNavigateToDetail(group.first().id)
                         } else {
                             selectedGroup = group
                         }
@@ -249,15 +259,6 @@ fun MapScreen(
                 ) {
                     iconImage = IconImage(markerBitmap)
                     iconSize = iconScale
-                }
-            }
-
-            feedQuery.latitude?.let { lat ->
-                feedQuery.longitude?.let { lng ->
-                    PointAnnotation(point = Point.fromLngLat(lng, lat)) {
-                        iconImage = IconImage(userMarkerBitmap)
-                        iconSize = iconScale
-                    }
                 }
             }
         }

@@ -5,7 +5,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from typing import List
 from starlette.websockets import WebSocketState
 
-from app.modules.reports.infrastructure.dtos import CreateReportDTO, ReportPhotoUploadResponseDTO, ReportResponseDTO, UpdateReportDTO, VoteDTO
+from app.modules.reports.infrastructure.dtos import (
+    CreateReportDTO, ReportPhotoUploadResponseDTO, ReportResponseDTO, UpdateReportDTO, VoteDTO,
+    CreateEvolutionDTO, EvolutionVoteDTO, EvolutionResponseDTO,
+)
 from app.core.storage.dependencies import get_storage_repository
 from app.core.storage.repository import StorageRepository
 
@@ -19,6 +22,9 @@ from app.modules.reports.infrastructure.dependencies import (
     get_vote_controller,
     get_all_controller,
     get_reports_repo,
+    get_evolutions_controller,
+    get_create_evolution_controller,
+    get_vote_evolution_controller,
 )
 
 from app.modules.auth.infrastructure.dependencies import get_auth_repo, get_current_user, get_user_from_access_token
@@ -166,15 +172,43 @@ def vote_report(
         )
     return result
 
-@router.patch("/{id}") 
+@router.patch("/{id}")
 def update_report(
     id: int,
     data: UpdateReportDTO,
     controller = Depends(get_update_controller),
     user = Depends(get_current_user)
 ):
-    print(f"Editando reporte {id} por usuario {user.id}")
     return controller.run(report_id=id, user_id=user.id, dto=data)
+
+
+@router.get("/{id}/evolutions", response_model=List[EvolutionResponseDTO])
+def get_evolutions(
+    id: int,
+    controller = Depends(get_evolutions_controller),
+    user = Depends(get_current_user)
+):
+    return controller.run(report_id=id, current_user_id=user.id)
+
+
+@router.post("/{id}/evolutions", response_model=EvolutionResponseDTO, status_code=status.HTTP_201_CREATED)
+def create_evolution(
+    id: int,
+    data: CreateEvolutionDTO,
+    controller = Depends(get_create_evolution_controller),
+    user = Depends(get_current_user)
+):
+    return controller.run(report_id=id, user_id=user.id, dto=data)
+
+
+@router.post("/evolutions/{evolution_id}/vote", response_model=EvolutionResponseDTO)
+def vote_evolution(
+    evolution_id: int,
+    data: EvolutionVoteDTO,
+    controller = Depends(get_vote_evolution_controller),
+    user = Depends(get_current_user)
+):
+    return controller.run(evolution_id=evolution_id, user_id=user.id, dto=data)
 
 
 @router.websocket("/ws")

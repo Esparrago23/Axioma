@@ -13,6 +13,8 @@ import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsAp
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toEntity
 import com.patatus.axioma.features.reports.data.datasources.remote.mediator.ReportRemoteMediator
+import com.patatus.axioma.features.reports.data.datasources.remote.models.CreateEvolutionRequest
+import com.patatus.axioma.features.reports.data.datasources.remote.models.EvolutionVoteRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
@@ -21,6 +23,7 @@ import com.patatus.axioma.features.reports.data.realtime.ReportsRealtimeWebSocke
 import com.patatus.axioma.features.reports.domain.entities.FeedQuery
 import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.entities.ReportEvolution
 import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -246,6 +249,34 @@ class ReportsRepositoryImpl @Inject constructor(
                 }
             }
         }
+    }
+
+    override suspend fun getEvolutions(reportId: Int): Result<List<ReportEvolution>> = safeApiCall {
+        api.getEvolutions(reportId).map { it.toDomain() }
+    }
+
+    override suspend fun createEvolution(
+        reportId: Int,
+        type: String,
+        description: String,
+        photoUrl: String?,
+        userLat: Double,
+        userLon: Double,
+    ): Result<ReportEvolution> = safeApiCall {
+        api.createEvolution(
+            reportId,
+            CreateEvolutionRequest(
+                type = type,
+                description = description,
+                photoUrl = photoUrl,
+                userLatitude = userLat,
+                userLongitude = userLon,
+            )
+        ).toDomain()
+    }
+
+    override suspend fun voteEvolution(evolutionId: Int, isUpvote: Boolean): Result<ReportEvolution> = safeApiCall {
+        api.voteEvolution(evolutionId, EvolutionVoteRequest(if (isUpvote) 1 else -1)).toDomain()
     }
 
     private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
