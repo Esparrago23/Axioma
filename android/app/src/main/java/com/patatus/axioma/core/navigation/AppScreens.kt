@@ -125,7 +125,10 @@ class AppScreens(
         val viewModel: FeedViewModel = hiltViewModel()
 
         MapScreen(
-            viewModel = viewModel
+            viewModel = viewModel,
+            onNavigateToDetail = { reportId ->
+                navController.navigate(AppNavigation.Routes.reportDetail(reportId))
+            }
         )
     }
 
