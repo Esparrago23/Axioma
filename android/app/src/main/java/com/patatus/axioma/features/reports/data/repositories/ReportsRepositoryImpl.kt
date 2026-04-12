@@ -147,16 +147,17 @@ class ReportsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getReportsMap(lat: Double, long: Double): Result<List<Report>> {
+    override suspend fun getReportsMap(lat: Double, long: Double, radiusKm: Int, category: String?): Result<List<Report>> {
         return withContext(Dispatchers.IO) {
             try {
                 val response = api.getReportsNearby(
                     latitude = lat,
                     longitude = long,
-                    radiusKm = 15,
+                    radiusKm = radiusKm,
                     sort = "recent",
                     limit = 100,
-                    offset = 0
+                    offset = 0,
+                    category = category
                 )
 
                 if (!response.isSuccessful) {

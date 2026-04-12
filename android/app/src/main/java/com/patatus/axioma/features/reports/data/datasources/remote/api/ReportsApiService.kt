@@ -41,7 +41,8 @@ interface ReportsApiService {
         @Query("radius_km") radiusKm: Int = 15,
         @Query("sort") sort: String = "recent",
         @Query("limit") limit: Int,
-        @Query("offset") offset: Int
+        @Query("offset") offset: Int,
+        @Query("category") category: String? = null
     ): Response<List<ReportResponse>>
 
     @GET("reports/{id}")
