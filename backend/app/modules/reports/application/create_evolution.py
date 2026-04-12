@@ -24,6 +24,12 @@ class CreateEvolutionUseCase:
         if report is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reporte no encontrado")
 
+        if self.repo.get_user_pending_evolution(report_id, user_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ya tienes una actualización pendiente en este reporte. Elimínala primero para proponer una nueva.",
+            )
+
         distance = _haversine_km(
             dto.user_latitude, dto.user_longitude,
             report.latitude, report.longitude,

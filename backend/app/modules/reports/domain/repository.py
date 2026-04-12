@@ -50,3 +50,9 @@ class ReportRepository(ABC):
 
     @abstractmethod
     def delete_evolution(self, evolution_id: int) -> bool: pass
+
+    @abstractmethod
+    def get_user_pending_evolution(self, report_id: int, user_id: int) -> Optional[ReportEvolution]: pass
+
+    @abstractmethod
+    def delete_other_pending_evolutions(self, report_id: int, exclude_evolution_id: int) -> None: pass

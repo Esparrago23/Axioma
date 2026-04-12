@@ -35,9 +35,28 @@ class VoteEvolutionUseCase:
                 vote_value=dto.vote_value,
             ))
 
+        if evolution.status == EvolutionStatus.REJECTED and not was_confirmed_before:
+            self.repo.delete_evolution(evolution.id)
+            return EvolutionResponseDTO(
+                id=evolution.id,
+                report_id=evolution.report_id,
+                user_id=evolution.user_id,
+                type=evolution.type.value,
+                description=evolution.description,
+                photo_url=evolution.photo_url,
+                credibility_score=evolution.credibility_score,
+                status=evolution.status.value,
+                is_valid=False,
+                user_vote=dto.vote_value,
+                user_latitude=evolution.user_latitude,
+                user_longitude=evolution.user_longitude,
+                created_at=evolution.created_at,
+            )
+
         self.repo.save_evolution(evolution)
 
         if evolution.status == EvolutionStatus.CONFIRMED and not was_confirmed_before:
+            self.repo.delete_other_pending_evolutions(evolution.report_id, evolution.id)
             report = self.repo.get_by_id(evolution.report_id)
             if report:
                 if evolution.type.value == "RESOLVED" and report.status == ReportStatus.ACTIVE:

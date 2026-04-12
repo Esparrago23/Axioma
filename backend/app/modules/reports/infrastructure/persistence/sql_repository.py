@@ -246,6 +246,37 @@ class SQLReportRepository(ReportRepository):
         statement = select(VoteModel.user_id).where(VoteModel.report_id == report_id)
         return list(self.session.exec(statement).all())
 
+    def get_user_pending_evolution(self, report_id: int, user_id: int) -> Optional[ReportEvolution]:
+        statement = select(ReportEvolutionModel).where(
+            ReportEvolutionModel.report_id == report_id,
+            ReportEvolutionModel.user_id == user_id,
+            ReportEvolutionModel.status == EvolutionStatus.PENDING.value,
+            ReportEvolutionModel.is_valid == True,
+        )
+        result = self.session.exec(statement).first()
+        return self._evolution_to_domain(result) if result else None
+
+    def delete_other_pending_evolutions(self, report_id: int, exclude_evolution_id: int) -> None:
+        statement = select(ReportEvolutionModel).where(
+            ReportEvolutionModel.report_id == report_id,
+            ReportEvolutionModel.id != exclude_evolution_id,
+            ReportEvolutionModel.status == EvolutionStatus.PENDING.value,
+            ReportEvolutionModel.is_valid == True,
+        )
+        results = self.session.exec(statement).all()
+        for evo in results:
+            self.session.delete(evo)
+        if results:
+            self.session.commit()
+
+    def delete_evolution(self, evolution_id: int) -> bool:
+        evo_db = self.session.get(ReportEvolutionModel, evolution_id)
+        if evo_db:
+            self.session.delete(evo_db)
+            self.session.commit()
+            return True
+        return False
+
     def _evolution_to_domain(self, model: ReportEvolutionModel) -> ReportEvolution:
         data = model.model_dump(exclude={"type", "status"})
         return ReportEvolution(

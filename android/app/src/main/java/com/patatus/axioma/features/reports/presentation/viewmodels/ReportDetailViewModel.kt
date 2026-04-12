@@ -163,7 +163,18 @@ class ReportDetailViewModel @Inject constructor(
     ) {
         val reportId = currentReportId ?: return
         viewModelScope.launch {
-            createEvolutionUseCase(reportId, type, description, photoUrl, userLat, userLon)
+            var finalPhotoUrl: String? = null
+            if (photoUrl != null && (photoUrl.startsWith("content://") || photoUrl.startsWith("file://"))) {
+                val upload = uploadReportPhotoUseCase(photoUrl)
+                if (upload.isFailure) {
+                    _evolutionError.value = "No se pudo subir la imagen"
+                    return@launch
+                }
+                finalPhotoUrl = upload.getOrNull()
+            } else {
+                finalPhotoUrl = photoUrl
+            }
+            createEvolutionUseCase(reportId, type, description, finalPhotoUrl, userLat, userLon)
                 .onSuccess { newEvo ->
                     (_uiState.value as? DetailUiState.Success)?.let { s ->
                         _uiState.value = s.copy(evolutions = s.evolutions + newEvo)
