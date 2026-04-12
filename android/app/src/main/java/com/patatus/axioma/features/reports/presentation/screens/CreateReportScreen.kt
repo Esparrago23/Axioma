@@ -54,6 +54,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringArrayResource
+import com.patatus.axioma.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -95,7 +97,7 @@ fun CreateReportScreen(
         viewModel.onEvidencePhotoSelected(photoUri.toString())
     }
 
-    val categories = listOf("INFRAESTRUCTURA", "SEGURIDAD", "SANITIZACION", "VANDALISMO", "SOCIAL")
+    val categories = stringArrayResource(R.array.report_categories).toList()
 
     LaunchedEffect(cameraPermission.hasPermission, pendingCameraLaunch) {
         if (cameraPermission.hasPermission && pendingCameraLaunch) {
