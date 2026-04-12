@@ -5,8 +5,10 @@ import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.patatus.axioma.BuildConfig
@@ -124,6 +126,23 @@ class PushSyncRetryWorker(
                 .build()
 
             WorkManager.getInstance(context).enqueue(request)
+        }
+
+        fun enqueuePeriodicSync(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
+                .build()
+
+            val request = PeriodicWorkRequestBuilder<PushSyncRetryWorker>(1, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "push_sync_periodic",
+                ExistingPeriodicWorkPolicy.KEEP,
+                request
+            )
         }
     }
 }
