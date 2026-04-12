@@ -9,6 +9,7 @@ if (localPropertiesFile.exists()) {
 }
 
 val mapboxToken = localProperties.getProperty("MAPBOX_ACCESS_TOKEN") ?: ""
+val devApiUrl = localProperties.getProperty("DEV_API_URL") ?: ""
 
 plugins {
     alias(libs.plugins.android.application)
@@ -57,14 +58,14 @@ android {
             dimension = "environment"
             resValue("string", "app_name", "Axioma (DEV)")
             resValue("string", "mapbox_access_token", mapboxToken)
-            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
+            buildConfigField("String", "BASE_URL_API", "\"$devApiUrl\"")
         }
 
         create("prod") {
             dimension = "environment"
             resValue("string", "app_name", "Axioma Prod")
             resValue("string", "mapbox_access_token", mapboxToken)
-            buildConfigField("String", "BASE_URL_API", "\"https://esparrago.engineer/\"")
+            buildConfigField("String", "BASE_URL_API", "\"$devApiUrl\"")
         }
     }
     packaging {
