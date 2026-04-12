@@ -94,12 +94,7 @@ class FeedViewModel @Inject constructor(
         viewModelScope.launch {
             getReportsMapUseCase(latitude, longitude)
                 .onSuccess { reports ->
-                    android.util.Log.d("FeedViewModel", "mapReports recibidos: ${reports.size}")
-                    reports.forEach { android.util.Log.d("FeedViewModel", "  -> ${it.id} lat=${it.latitude} lng=${it.longitude}") }
                     _mapReports.value = reports
-                }
-                .onFailure { error ->
-                    android.util.Log.e("FeedViewModel", "error al cargar mapa: ${error.message}")
                 }
         }
     }
