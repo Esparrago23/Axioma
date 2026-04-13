@@ -30,6 +30,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,7 +69,7 @@ fun FeedScreen(
     val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-         viewModel.loadUserProfile()
+        viewModel.loadUserProfile()
     }
 
     LaunchedEffect(currentLatitude, currentLongitude, cityRadiusKm) {
@@ -86,7 +87,6 @@ fun FeedScreen(
             TopAppBar(
                 title = { Text("Axioma") },
                 actions = {
-                    // ⭐ NUEVO: Botón de perfil con imagen
                     IconButton(
                         onClick = onNavigateToProfile,
                         modifier = Modifier.padding(end = 8.dp)
@@ -130,86 +130,129 @@ fun FeedScreen(
             )
         },
     ) { padding ->
-        Column(
+
+        // ⭐ IMPLEMENTACIÓN PULL TO REFRESH BOX (Paging 3) ⭐
+        val isRefreshing = reports.loadState.refresh is LoadState.Loading
+
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { reports.refresh() },
             modifier = Modifier
-                .padding(padding)
                 .fillMaxSize()
+                .padding(padding)
         ) {
-            TabRow(selectedTabIndex = if (feedQuery.sort == FeedSort.RELEVANT) 0 else 1) {
-                Tab(
-                    selected = feedQuery.sort == FeedSort.RELEVANT,
-                    onClick = { viewModel.onSortSelected(FeedSort.RELEVANT) },
-                    text = { Text("Relevantes") }
-                )
-                Tab(
-                    selected = feedQuery.sort == FeedSort.RECENT,
-                    onClick = { viewModel.onSortSelected(FeedSort.RECENT) },
-                    text = { Text("Recientes") }
-                )
-            }
+            Column(modifier = Modifier.fillMaxSize()) {
 
-            when (val refreshState = reports.loadState.refresh) {
-                is LoadState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    }
+                val selectedTabIndex = when (feedQuery.sort) {
+                    FeedSort.NEARBY -> 0
+                    FeedSort.RECENT -> 1
+                    FeedSort.RELEVANT -> 2
+                    else -> 1
                 }
-                is LoadState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Column(
-                            modifier = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+
+                TabRow(selectedTabIndex = selectedTabIndex) {
+                    Tab(
+                        selected = selectedTabIndex == 0,
+                        onClick = { viewModel.onSortSelected(FeedSort.NEARBY) },
+                        text = {
                             Text(
-                                text = refreshState.error.message ?: "Error al cargar el feed",
-                                color = MaterialTheme.colorScheme.error
+                                text = "Cerca de mí",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                            Button(onClick = { reports.retry() }) {
-                                Text("Reintentar")
+                        }
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 1,
+                        onClick = { viewModel.onSortSelected(FeedSort.RECENT) },
+                        text = {
+                            Text(
+                                text = "Recientes",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 2,
+                        onClick = { viewModel.onSortSelected(FeedSort.RELEVANT) },
+                        text = {
+                            Text(
+                                text = "Relevantes",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    )
+                }
+
+                when (val refreshState = reports.loadState.refresh) {
+                    is LoadState.Loading -> {
+                        // Solo mostramos el loader central si el pull-to-refresh NO está activo
+                        // (es decir, en la primera carga cuando entras a la pantalla)
+                        if (!isRefreshing) {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                             }
                         }
                     }
-                }
-                is LoadState.NotLoading -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(
-                            count = reports.itemCount,
-                            key = reports.itemKey { it.id },
-                            contentType = reports.itemContentType { "Report" }
-                        ) { index ->
-                            val report = reports[index]
-                            if (report != null) {
-                                ReportItem(report = report, onClick = { onNavigateToDetail(report.id) })
+                    is LoadState.Error -> {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Column(
+                                modifier = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = refreshState.error.message ?: "Error al cargar el feed",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Button(onClick = { reports.retry() }) {
+                                    Text("Reintentar")
+                                }
                             }
                         }
+                    }
+                    is LoadState.NotLoading -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(
+                                count = reports.itemCount,
+                                key = reports.itemKey { it.id },
+                                contentType = reports.itemContentType { "Report" }
+                            ) { index ->
+                                val report = reports[index]
+                                if (report != null) {
+                                    ReportItem(report = report, onClick = { onNavigateToDetail(report.id) })
+                                }
+                            }
 
-                        when (val appendState = reports.loadState.append) {
-                            is LoadState.Loading -> {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(vertical = 8.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator()
+                            when (val appendState = reports.loadState.append) {
+                                is LoadState.Loading -> {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
                                     }
                                 }
-                            }
-                            is LoadState.Error -> {
-                                item {
-                                    Text(
-                                        text = "Error al cargar mas denuncias: ${appendState.error.message}",
-                                        color = MaterialTheme.colorScheme.error
-                                    )
+                                is LoadState.Error -> {
+                                    item {
+                                        Text(
+                                            text = "Error al cargar mas denuncias: ${appendState.error.message}",
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
                                 }
+                                is LoadState.NotLoading -> Unit
                             }
-                            is LoadState.NotLoading -> Unit
                         }
                     }
                 }

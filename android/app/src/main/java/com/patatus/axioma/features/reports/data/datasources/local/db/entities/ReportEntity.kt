@@ -25,5 +25,6 @@ data class ReportEntity(
     val status: String,
     @ColumnInfo(name = "user_id") val userId: Int,
     @ColumnInfo(name = "created_at") val createdAt: String,
-    @ColumnInfo(name = "user_vote") val userVote: Int
+    @ColumnInfo(name = "user_vote") val userVote: Int,
+    @ColumnInfo(name = "distance_km") val distanceKm: Double? = null
 )

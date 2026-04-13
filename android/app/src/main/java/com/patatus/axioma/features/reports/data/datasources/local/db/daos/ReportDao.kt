@@ -21,6 +21,18 @@ interface ReportDao {
     @Query("SELECT * FROM reports WHERE created_at >= :sinceIso ORDER BY credibility_score DESC, created_at DESC")
     fun pagingSourceRelevant(sinceIso: String): PagingSource<Int, ReportEntity>
 
+    // ⭐ NUEVA CONSULTA NEARBY: Usamos una aproximación matemática simple de Pitágoras
+    // ((lat1 - lat2)^2 + (lon1 - lon2)^2).
+    // Para SQLite estándar sin extensiones espaciales, esta es la forma de hacerlo.
+    @Query("""
+        SELECT * FROM reports 
+        ORDER BY (
+            (latitude - :userLat) * (latitude - :userLat) + 
+            (longitude - :userLon) * (longitude - :userLon)
+        ) ASC
+    """)
+    fun pagingSourceNearby(userLat: Double, userLon: Double): PagingSource<Int, ReportEntity>
+
     @Query("SELECT * FROM reports WHERE id = :reportId LIMIT 1")
     suspend fun getById(reportId: Int): ReportEntity?
 

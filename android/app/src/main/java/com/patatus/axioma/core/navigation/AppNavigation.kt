@@ -35,6 +35,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+
 // Clase auxiliar para definir los items de la barra inferior
 data class BottomNavItem(val route: String, val title: String, val icon: ImageVector)
 
@@ -78,24 +81,34 @@ object AppNavigation {
                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
                     NavigationBar {
+
+
+
                         val bottomNavItems = listOf(
+                            BottomNavItem(Routes.MIS_REPORTES, "Reportes", Icons.Default.List),
+                            BottomNavItem(Routes.CREATE_REPORT, "Reportar", Icons.Default.AddCircle),
                             BottomNavItem(Routes.FEED, "Inicio", Icons.Default.Home),
                             BottomNavItem(Routes.MAPA, "Mapa", Icons.Default.Map),
-                            BottomNavItem(Routes.MIS_REPORTES, "Mis Reportes", Icons.Default.List),
-                            BottomNavItem(Routes.NOTIFICATIONS, "Notificaciones", Icons.Default.NotificationsNone),
-                            BottomNavItem(Routes.CREATE_REPORT, "Reportar", Icons.Default.AddCircle)
+                            BottomNavItem(Routes.NOTIFICATIONS, "Avisos", Icons.Default.NotificationsNone)
                         )
 
                         bottomNavItems.forEach { item ->
                             val isSelected = currentRoute == item.route
                             NavigationBarItem(
                                 icon = { Icon(item.icon, contentDescription = item.title) },
-                                label = { Text(item.title) },
+                                label = {
+                                    Text(
+                                        text = item.title,
+                                        maxLines = 1, // Fuerza a que no haga el salto de línea
+                                        overflow = TextOverflow.Ellipsis, // Pone "..." si el texto no cabe
+                                        fontSize = 12.sp // Opcional: Descomenta si aún así lo ves muy grande
+                                    )
+                                },
                                 selected = isSelected,
+                                alwaysShowLabel = true,
                                 onClick = {
                                     if (!isSelected) {
                                         navController.navigate(item.route) {
-                                            // PopUp hasta el inicio para no acumular vistas infinitas en el stack
                                             popUpTo(Routes.FEED) { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true

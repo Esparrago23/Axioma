@@ -15,13 +15,8 @@ import com.patatus.axioma.features.reports.presentation.viewmodels.ReportDetailV
 import com.patatus.axioma.features.users.presentation.screens.ProfileScreen
 import com.patatus.axioma.features.users.presentation.viewmodels.ProfileViewModel
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import com.patatus.axioma.features.reports.presentation.screens.MapScreen
-import com.patatus.axioma.features.reports.presentation.ui.MyReportsScreen
+import com.patatus.axioma.features.reports.presentation.screens.MyReportsScreen
 import com.patatus.axioma.features.notifications.presentation.screen.NotificationCenter
 class AppScreens(
 
@@ -132,12 +127,15 @@ class AppScreens(
         )
     }
 
-    /* ---------------- MIS REPORTES (Placeholder) ---------------- */
+    /* ---------------- MIS REPORTES ---------------- */
     @Composable
     fun MisReportes(navController: NavController) {
         MyReportsScreen(
             onReportClick = { reportId ->
                 navController.navigate("report_detail/$reportId")
+            },
+            onNavigateToProfile = { // <-- Agrega esto
+                navController.navigate(AppNavigation.Routes.PROFILE)
             }
         )
     }
@@ -164,7 +162,11 @@ class AppScreens(
     }
     @Composable
     fun Notifications(navController: NavController) {
-        NotificationCenter()
+        NotificationCenter(
+            onNavigateToProfile = {
+                navController.navigate(AppNavigation.Routes.PROFILE)
+            }
+        )
     }
 }
 

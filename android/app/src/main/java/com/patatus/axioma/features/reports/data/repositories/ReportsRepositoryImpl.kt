@@ -130,6 +130,18 @@ class ReportsRepositoryImpl @Inject constructor(
                     sinceIso = Instant.now().minus(48, ChronoUnit.HOURS).toString()
                 )
                 FeedSort.RECENT -> database.reportDao().pagingSourceRecent()
+                FeedSort.NEARBY -> {
+                    // Si tenemos coordenadas, ordenamos por cercanía.
+                    // Si por alguna razón la ubicación está apagada, caemos a recientes.
+                    if (query.latitude != null && query.longitude != null) {
+                        database.reportDao().pagingSourceNearby(
+                            userLat = query.latitude,
+                            userLon = query.longitude
+                        )
+                    } else {
+                        database.reportDao().pagingSourceRecent()
+                    }
+                }
             }
         }
 
@@ -142,7 +154,7 @@ class ReportsRepositoryImpl @Inject constructor(
             remoteMediator = ReportRemoteMediator(
                 apiService = api,
                 database = database,
-                query = query
+                query = query // El mediator enviará esto al backend para traer la data correcta
             ),
             pagingSourceFactory = pagingSourceFactory
         ).flow.map { pagingData ->
