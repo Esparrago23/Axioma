@@ -18,7 +18,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 data class LocationCoordinates(
     val latitude: Double,
@@ -66,7 +65,7 @@ class LocationCapture @Inject constructor(
                     }
                 }
                 .addOnFailureListener { e ->
-                    continuation.resumeWithException(e)
+                    continuation.resume(LocationResult2.Error(e.message ?: "Error al obtener ubicación"))
                 }
         }
     }

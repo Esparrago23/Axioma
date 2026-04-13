@@ -18,7 +18,7 @@ import com.patatus.axioma.features.reports.data.datasources.local.db.entities.Re
         NotificationEntity::class,
         NotificationRemoteKeysEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class AxiomaDatabase : RoomDatabase() {

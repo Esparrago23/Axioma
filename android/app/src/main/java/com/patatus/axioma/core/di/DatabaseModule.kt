@@ -60,6 +60,12 @@ object DatabaseModule {
         }
     }
 
+    private val migration4To5 = object : Migration(4, 5) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("ALTER TABLE reports ADD COLUMN distance_km REAL")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAxiomaDatabase(
@@ -69,7 +75,7 @@ object DatabaseModule {
             context,
             AxiomaDatabase::class.java,
             "axioma_database"
-        ).addMigrations(migration1To2, migration2To3, migration3To4)
+        ).addMigrations(migration1To2, migration2To3, migration3To4, migration4To5)
 
         return if (BuildConfig.DEBUG) {
             builder.fallbackToDestructiveMigration().build()
