@@ -17,26 +17,50 @@ class CreateReportViewModel @Inject constructor(
     private val uploadReportPhotoUseCase: UploadReportPhotoUseCase
 ) : ViewModel() {
 
-    // Inputs
-    var title = MutableStateFlow("")
-    var description = MutableStateFlow("")
-    var category = MutableStateFlow("INFRAESTRUCTURA")
-    var latitude = MutableStateFlow(16.75)
-    var longitude = MutableStateFlow(-93.11)
-    var evidencePhotoUri = MutableStateFlow("")
+    private val _title = MutableStateFlow("")
+    val title = _title.asStateFlow()
+
+    private val _description = MutableStateFlow("")
+    val description = _description.asStateFlow()
+
+    private val _category = MutableStateFlow("INFRAESTRUCTURA")
+    val category = _category.asStateFlow()
+
+    private val _latitude = MutableStateFlow<Double?>(null)
+    val latitude = _latitude.asStateFlow()
+
+    private val _longitude = MutableStateFlow<Double?>(null)
+    val longitude = _longitude.asStateFlow()
+
+    private val _evidencePhotoUri = MutableStateFlow("")
+    val evidencePhotoUri = _evidencePhotoUri.asStateFlow()
 
     private val _uiState = MutableStateFlow<ReportUiState>(ReportUiState.Idle)
     val uiState = _uiState.asStateFlow()
 
+    fun onTitleChanged(value: String) { _title.value = value }
+    fun onDescriptionChanged(value: String) { _description.value = value }
+    fun onCategoryChanged(value: String) { _category.value = value }
+    fun onLocationChanged(lat: Double, lng: Double) {
+        _latitude.value = lat
+        _longitude.value = lng
+    }
+
     fun sendReport() {
-        if (title.value.isBlank() || description.value.isBlank()) {
+        if (_title.value.isBlank() || _description.value.isBlank()) {
             _uiState.value = ReportUiState.Error("Ponle título y descripción.")
+            return
+        }
+        val lat = _latitude.value
+        val lng = _longitude.value
+        if (lat == null || lng == null) {
+            _uiState.value = ReportUiState.Error("No se pudo obtener tu ubicación. Asegúrate de tener el GPS activo.")
             return
         }
         viewModelScope.launch {
             _uiState.value = ReportUiState.Loading
 
-            val localPhoto = evidencePhotoUri.value.trim()
+            val localPhoto = _evidencePhotoUri.value.trim()
 
             val photoUrlResult = if (localPhoto.startsWith("content://") || localPhoto.startsWith("file://")) {
                 uploadReportPhotoUseCase(localPhoto)
@@ -52,20 +76,20 @@ class CreateReportViewModel @Inject constructor(
             val uploadedPhotoUrl = photoUrlResult.getOrNull()
 
             val result = createReportUseCase(
-                title = title.value,
-                desc = description.value,
-                lat = latitude.value,
-                long = longitude.value,
-                cat = category.value,
+                title = _title.value,
+                desc = _description.value,
+                lat = lat,
+                long = lng,
+                cat = _category.value,
                 photoUrl = uploadedPhotoUrl
             )
 
             result.onSuccess {
                 _uiState.value = ReportUiState.Success
-                title.value = ""
-                description.value = ""
-                category.value = "INFRAESTRUCTURA"
-                evidencePhotoUri.value = ""
+                _title.value = ""
+                _description.value = ""
+                _category.value = "INFRAESTRUCTURA"
+                _evidencePhotoUri.value = ""
             }.onFailure {
                 _uiState.value = ReportUiState.Error(it.message ?: "Error al enviar")
             }
@@ -73,7 +97,7 @@ class CreateReportViewModel @Inject constructor(
     }
 
     fun onEvidencePhotoSelected(uri: String) {
-        evidencePhotoUri.value = uri
+        _evidencePhotoUri.value = uri
     }
 
     fun resetState() { _uiState.value = ReportUiState.Idle }

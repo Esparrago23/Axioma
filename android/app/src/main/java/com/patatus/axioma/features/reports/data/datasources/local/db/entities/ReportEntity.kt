@@ -2,9 +2,17 @@ package com.patatus.axioma.features.reports.data.datasources.local.db.entities
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "reports")
+@Entity(
+    tableName = "reports",
+    indices = [
+        Index(value = ["created_at"]),
+        Index(value = ["credibility_score"]),
+        Index(value = ["user_id"])
+    ]
+)
 data class ReportEntity(
     @PrimaryKey val id: Int,
     val title: String,
@@ -17,5 +25,6 @@ data class ReportEntity(
     val status: String,
     @ColumnInfo(name = "user_id") val userId: Int,
     @ColumnInfo(name = "created_at") val createdAt: String,
-    @ColumnInfo(name = "user_vote") val userVote: Int
+    @ColumnInfo(name = "user_vote") val userVote: Int,
+    @ColumnInfo(name = "distance_km") val distanceKm: Double? = null
 )

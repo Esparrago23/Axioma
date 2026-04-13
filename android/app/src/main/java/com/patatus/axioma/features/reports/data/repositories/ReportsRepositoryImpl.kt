@@ -13,6 +13,8 @@ import com.patatus.axioma.features.reports.data.datasources.remote.api.ReportsAp
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toDomain
 import com.patatus.axioma.features.reports.data.datasources.remote.mapper.toEntity
 import com.patatus.axioma.features.reports.data.datasources.remote.mediator.ReportRemoteMediator
+import com.patatus.axioma.features.reports.data.datasources.remote.models.CreateEvolutionRequest
+import com.patatus.axioma.features.reports.data.datasources.remote.models.EvolutionVoteRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportCreateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.ReportUpdateRequest
 import com.patatus.axioma.features.reports.data.datasources.remote.models.VoteRequest
@@ -21,6 +23,7 @@ import com.patatus.axioma.features.reports.data.realtime.ReportsRealtimeWebSocke
 import com.patatus.axioma.features.reports.domain.entities.FeedQuery
 import com.patatus.axioma.features.reports.domain.entities.FeedSort
 import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.entities.ReportEvolution
 import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import com.patatus.axioma.features.reports.domain.repositories.ReportsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -55,31 +58,15 @@ class ReportsRepositoryImpl @Inject constructor(
         category: String,
         photoUrl: String?
     ): Result<Report> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val request = ReportCreateRequest(
-                    title = title,
-                    description = desc,
-                    category = category,
-                    latitude = lat,
-                    longitude = long,
-                    photoUrl = photoUrl
-                )
-                val response = api.createReport(request)
-                val entity = response.toDomain()
-                Result.success(entity)
-            } catch (e: HttpException) {
-                val errorBody = e.response()?.errorBody()?.string()
-                val errorMessage = try {
-                    JSONObject(errorBody).getString("detail")
-                } catch (jsonException: Exception) {
-                    "Error desconocido en el servidor (${e.code()})"
-                }
-                Result.failure(Exception(errorMessage))
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
+        val request = ReportCreateRequest(
+            title = title,
+            description = desc,
+            category = category,
+            latitude = lat,
+            longitude = long,
+            photoUrl = photoUrl
+        )
+        return safeApiCall { api.createReport(request).toDomain() }
     }
 
     override suspend fun uploadReportPhoto(localUri: String): Result<String> {
@@ -143,6 +130,18 @@ class ReportsRepositoryImpl @Inject constructor(
                     sinceIso = Instant.now().minus(48, ChronoUnit.HOURS).toString()
                 )
                 FeedSort.RECENT -> database.reportDao().pagingSourceRecent()
+                FeedSort.NEARBY -> {
+                    // Si tenemos coordenadas, ordenamos por cercanía.
+                    // Si por alguna razón la ubicación está apagada, caemos a recientes.
+                    if (query.latitude != null && query.longitude != null) {
+                        database.reportDao().pagingSourceNearby(
+                            userLat = query.latitude,
+                            userLon = query.longitude
+                        )
+                    } else {
+                        database.reportDao().pagingSourceRecent()
+                    }
+                }
             }
         }
 
@@ -155,7 +154,7 @@ class ReportsRepositoryImpl @Inject constructor(
             remoteMediator = ReportRemoteMediator(
                 apiService = api,
                 database = database,
-                query = query
+                query = query // El mediator enviará esto al backend para traer la data correcta
             ),
             pagingSourceFactory = pagingSourceFactory
         ).flow.map { pagingData ->
@@ -163,16 +162,17 @@ class ReportsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getReportsMap(lat: Double, long: Double): Result<List<Report>> {
+    override suspend fun getReportsMap(lat: Double, long: Double, radiusKm: Int, category: String?): Result<List<Report>> {
         return withContext(Dispatchers.IO) {
             try {
                 val response = api.getReportsNearby(
                     latitude = lat,
                     longitude = long,
-                    radiusKm = 15,
+                    radiusKm = radiusKm,
                     sort = "recent",
                     limit = 100,
-                    offset = 0
+                    offset = 0,
+                    category = category
                 )
 
                 if (!response.isSuccessful) {
@@ -259,6 +259,49 @@ class ReportsRepositoryImpl @Inject constructor(
                         status = event.status
                     )
                 }
+            }
+        }
+    }
+
+    override suspend fun getEvolutions(reportId: Int): Result<List<ReportEvolution>> = safeApiCall {
+        api.getEvolutions(reportId).map { it.toDomain() }
+    }
+
+    override suspend fun createEvolution(
+        reportId: Int,
+        type: String,
+        description: String,
+        photoUrl: String?,
+        userLat: Double,
+        userLon: Double,
+    ): Result<ReportEvolution> = safeApiCall {
+        api.createEvolution(
+            reportId,
+            CreateEvolutionRequest(
+                type = type,
+                description = description,
+                photoUrl = photoUrl,
+                userLatitude = userLat,
+                userLongitude = userLon,
+            )
+        ).toDomain()
+    }
+
+    override suspend fun voteEvolution(evolutionId: Int, isUpvote: Boolean): Result<ReportEvolution> = safeApiCall {
+        api.voteEvolution(evolutionId, EvolutionVoteRequest(if (isUpvote) 1 else -1)).toDomain()
+    }
+
+    override suspend fun deleteEvolution(evolutionId: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.deleteEvolution(evolutionId)
+                if (response.isSuccessful) Result.success(true)
+                else {
+                    val msg = try { JSONObject(response.errorBody()?.string()).getString("detail") } catch (e: Exception) { "Error al eliminar" }
+                    Result.failure(Exception(msg))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
         }
     }

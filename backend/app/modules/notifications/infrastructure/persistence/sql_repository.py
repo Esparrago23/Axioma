@@ -88,5 +88,17 @@ class SQLNotificationRepository(NotificationRepository):
             if row[1]
         ]
 
+    def find_recipients_by_user_ids(self, user_ids: list[int]) -> list[NotificationRecipient]:
+        if not user_ids:
+            return []
+        statement = select(UserModel.id, UserModel.fcm_token).where(
+            and_(
+                UserModel.id.in_(user_ids),
+                UserModel.fcm_token.is_not(None),
+            )
+        )
+        rows = self.session.exec(statement).all()
+        return [NotificationRecipient(user_id=row[0], fcm_token=row[1]) for row in rows if row[1]]
+
     def _to_domain(self, model: NotificationModel) -> Notification:
         return Notification(**model.model_dump())

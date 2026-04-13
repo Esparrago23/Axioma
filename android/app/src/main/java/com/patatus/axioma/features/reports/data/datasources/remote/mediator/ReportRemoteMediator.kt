@@ -106,6 +106,7 @@ class ReportRemoteMediator(
 
 	private fun FeedSort.toApiSort(): String {
 		return when (this) {
+			FeedSort.NEARBY -> "nearby"
 			FeedSort.RELEVANT -> "relevant"
 			FeedSort.RECENT -> "recent"
 		}

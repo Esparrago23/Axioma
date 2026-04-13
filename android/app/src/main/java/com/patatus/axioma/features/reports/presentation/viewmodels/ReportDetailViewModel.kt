@@ -1,11 +1,16 @@
 package com.patatus.axioma.features.reports.presentation.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.patatus.axioma.features.comments.domain.entities.Comment
+import com.patatus.axioma.features.comments.domain.usecases.CreateCommentUseCase
+import com.patatus.axioma.features.comments.domain.usecases.DeleteCommentUseCase
+import com.patatus.axioma.features.comments.domain.usecases.GetCommentsUseCase
 import com.patatus.axioma.features.reports.domain.entities.Report
+import com.patatus.axioma.features.reports.domain.entities.ReportEvolution
 import com.patatus.axioma.features.reports.domain.entities.ReportRealtimeEvent
 import com.patatus.axioma.features.reports.domain.usecases.*
+import com.patatus.axioma.features.reports.domain.usecases.DeleteEvolutionUseCase
 import com.patatus.axioma.features.users.domain.usecases.GetUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +20,14 @@ import javax.inject.Inject
 
 sealed class DetailUiState {
     object Loading : DetailUiState()
-    data class Success(val report: Report, val currentUserId: Int) : DetailUiState()
+    data class Success(
+        val report: Report,
+        val currentUserId: Int,
+        val evolutions: List<ReportEvolution> = emptyList(),
+        val comments: List<Comment> = emptyList(),
+        val evolutionsLoading: Boolean = false,
+        val commentsLoading: Boolean = false,
+    ) : DetailUiState()
     data class Error(val msg: String) : DetailUiState()
     object Deleted : DetailUiState()
 }
@@ -28,11 +40,23 @@ class ReportDetailViewModel @Inject constructor(
     private val updateReportUseCase: UpdateReportUseCase,
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val uploadReportPhotoUseCase: UploadReportPhotoUseCase,
-    private val observeReportRealtimeEventsUseCase: ObserveReportRealtimeEventsUseCase
+    private val observeReportRealtimeEventsUseCase: ObserveReportRealtimeEventsUseCase,
+    private val getEvolutionsUseCase: GetEvolutionsUseCase,
+    private val createEvolutionUseCase: CreateEvolutionUseCase,
+    private val voteEvolutionUseCase: VoteEvolutionUseCase,
+    private val deleteEvolutionUseCase: DeleteEvolutionUseCase,
+    private val getCommentsUseCase: GetCommentsUseCase,
+    private val createCommentUseCase: CreateCommentUseCase,
+    private val deleteCommentUseCase: DeleteCommentUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
     val uiState = _uiState.asStateFlow()
+
+    private val _evolutionError = MutableStateFlow<String?>(null)
+    val evolutionError = _evolutionError.asStateFlow()
+
+    fun clearEvolutionError() { _evolutionError.value = null }
 
     private var currentReportId: Int? = null
 
@@ -52,11 +76,49 @@ class ReportDetailViewModel @Inject constructor(
             if (reportResult.isSuccess && userResult.isSuccess) {
                 _uiState.value = DetailUiState.Success(
                     report = reportResult.getOrThrow(),
-                    currentUserId = userResult.getOrThrow().id
+                    currentUserId = userResult.getOrThrow().id,
                 )
+                loadEvolutions(id)
+                loadComments(id)
             } else {
                 _uiState.value = DetailUiState.Error("Error de sincronización")
             }
+        }
+    }
+
+    private fun loadEvolutions(reportId: Int) {
+        val state = _uiState.value as? DetailUiState.Success ?: return
+        _uiState.value = state.copy(evolutionsLoading = true)
+        viewModelScope.launch {
+            getEvolutionsUseCase(reportId)
+                .onSuccess { evolutions ->
+                    (_uiState.value as? DetailUiState.Success)?.let {
+                        _uiState.value = it.copy(evolutions = evolutions, evolutionsLoading = false)
+                    }
+                }
+                .onFailure {
+                    (_uiState.value as? DetailUiState.Success)?.let {
+                        _uiState.value = it.copy(evolutionsLoading = false)
+                    }
+                }
+        }
+    }
+
+    private fun loadComments(reportId: Int) {
+        val state = _uiState.value as? DetailUiState.Success ?: return
+        _uiState.value = state.copy(commentsLoading = true)
+        viewModelScope.launch {
+            getCommentsUseCase(reportId)
+                .onSuccess { comments ->
+                    (_uiState.value as? DetailUiState.Success)?.let {
+                        _uiState.value = it.copy(comments = comments, commentsLoading = false)
+                    }
+                }
+                .onFailure {
+                    (_uiState.value as? DetailUiState.Success)?.let {
+                        _uiState.value = it.copy(commentsLoading = false)
+                    }
+                }
         }
     }
 
@@ -67,15 +129,95 @@ class ReportDetailViewModel @Inject constructor(
         val finalVote = if (report.userVote == newVoteValue) 0 else newVoteValue
         val diff = finalVote - report.userVote
 
-        val optimisticReport = report.copy(
-            userVote = finalVote,
-            credibilityScore = report.credibilityScore + diff
+        _uiState.value = state.copy(
+            report = report.copy(userVote = finalVote, credibilityScore = report.credibilityScore + diff)
         )
-        _uiState.value = state.copy(report = optimisticReport)
-
         viewModelScope.launch {
-            voteReportUseCase(report.id, isUpvote)
-                .onFailure { _uiState.value = state }
+            voteReportUseCase(report.id, isUpvote).onFailure { _uiState.value = state }
+        }
+    }
+
+    fun toggleEvolutionVote(evolutionId: Int, isUpvote: Boolean) {
+        val state = _uiState.value as? DetailUiState.Success ?: return
+        viewModelScope.launch {
+            voteEvolutionUseCase(evolutionId, isUpvote)
+                .onSuccess { updated ->
+                    (_uiState.value as? DetailUiState.Success)?.let { s ->
+                        _uiState.value = s.copy(
+                            evolutions = s.evolutions.map { if (it.id == updated.id) updated else it }
+                        )
+                    }
+                    if (updated.status == "CONFIRMED") {
+                        currentReportId?.let { loadReport(it) }
+                    }
+                }
+        }
+    }
+
+    fun createEvolution(
+        type: String,
+        description: String,
+        photoUrl: String?,
+        userLat: Double,
+        userLon: Double,
+    ) {
+        val reportId = currentReportId ?: return
+        viewModelScope.launch {
+            var finalPhotoUrl: String? = null
+            if (photoUrl != null && (photoUrl.startsWith("content://") || photoUrl.startsWith("file://"))) {
+                val upload = uploadReportPhotoUseCase(photoUrl)
+                if (upload.isFailure) {
+                    _evolutionError.value = "No se pudo subir la imagen"
+                    return@launch
+                }
+                finalPhotoUrl = upload.getOrNull()
+            } else {
+                finalPhotoUrl = photoUrl
+            }
+            createEvolutionUseCase(reportId, type, description, finalPhotoUrl, userLat, userLon)
+                .onSuccess { newEvo ->
+                    (_uiState.value as? DetailUiState.Success)?.let { s ->
+                        _uiState.value = s.copy(evolutions = s.evolutions + newEvo)
+                    }
+                }
+                .onFailure { _evolutionError.value = it.message ?: "No se pudo publicar la actualización" }
+        }
+    }
+
+    fun deleteEvolution(evolutionId: Int) {
+        viewModelScope.launch {
+            deleteEvolutionUseCase(evolutionId)
+                .onSuccess {
+                    (_uiState.value as? DetailUiState.Success)?.let { s ->
+                        _uiState.value = s.copy(evolutions = s.evolutions.filter { it.id != evolutionId })
+                    }
+                }
+                .onFailure { _evolutionError.value = it.message ?: "No se pudo eliminar la actualización" }
+        }
+    }
+
+    fun createComment(content: String) {
+        val reportId = currentReportId ?: return
+        viewModelScope.launch {
+            createCommentUseCase(reportId, content)
+                .onSuccess { newComment ->
+                    (_uiState.value as? DetailUiState.Success)?.let { s ->
+                        _uiState.value = s.copy(comments = s.comments + newComment)
+                    }
+                }
+        }
+    }
+
+    fun deleteComment(commentId: Int) {
+        val reportId = currentReportId ?: return
+        val state = _uiState.value as? DetailUiState.Success ?: return
+        viewModelScope.launch {
+            deleteCommentUseCase(reportId, commentId)
+                .onSuccess {
+                    (_uiState.value as? DetailUiState.Success)?.let { s ->
+                        _uiState.value = s.copy(comments = s.comments.filter { it.id != commentId })
+                    }
+                }
         }
     }
 
@@ -90,13 +232,11 @@ class ReportDetailViewModel @Inject constructor(
                 if (photoUri != null && (photoUri.startsWith("content://") || photoUri.startsWith("file://"))) {
                     val uploadResult = uploadReportPhotoUseCase(photoUri)
                     finalPhotoUrl = uploadResult.getOrNull()
-
                     if (finalPhotoUrl == null) {
                         _uiState.value = DetailUiState.Error("Error al subir la imagen")
                         return@launch
                     }
-                }
-                else if (deletePhoto) {
+                } else if (deletePhoto) {
                     finalPhotoUrl = null
                 }
 
@@ -122,29 +262,17 @@ class ReportDetailViewModel @Inject constructor(
     private fun handleRealtimeEvent(event: ReportRealtimeEvent) {
         val state = _uiState.value as? DetailUiState.Success ?: return
         val reportId = currentReportId ?: return
-        if (state.report.id != reportId) {
-            return
-        }
+        if (state.report.id != reportId) return
 
         when (event) {
             is ReportRealtimeEvent.NewReport -> {
-                if (event.report.id != reportId) {
-                    return
-                }
-                _uiState.value = state.copy(
-                    report = event.report.copy(userVote = state.report.userVote)
-                )
+                if (event.report.id != reportId) return
+                _uiState.value = state.copy(report = event.report.copy(userVote = state.report.userVote))
             }
-
             is ReportRealtimeEvent.VoteUpdate -> {
-                if (event.reportId != reportId) {
-                    return
-                }
+                if (event.reportId != reportId) return
                 _uiState.value = state.copy(
-                    report = state.report.copy(
-                        credibilityScore = event.credibilityScore,
-                        status = event.status
-                    )
+                    report = state.report.copy(credibilityScore = event.credibilityScore, status = event.status)
                 )
             }
         }

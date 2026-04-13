@@ -27,16 +27,10 @@ class AuthRepositoryImpl @Inject constructor(
             try {
                 val response = apiService.login(LoginRequest(email, pass))
                 TokenManager.saveToken(response.accessToken)
-                secureSessionStore.saveRefreshToken(response.refreshToken) // Usamos la instancia inyectada
+                secureSessionStore.saveRefreshToken(response.refreshToken)
                 Result.success(response.toDomain())
             } catch (e: HttpException) {
-                val errorBody = e.response()?.errorBody()?.string()
-                val errorMessage = try {
-                    JSONObject(errorBody).getString("detail")
-                } catch (jsonException: Exception) {
-                    "Error desconocido en el servidor (${e.code()})"
-                }
-                Result.failure(Exception(errorMessage))
+                Result.failure(Exception(parseApiError(e)))
             } catch (e: Exception) {
                 Result.failure(Exception("Error de conexión. Verifica tu internet."))
             }
@@ -67,14 +61,7 @@ class AuthRepositoryImpl @Inject constructor(
                     TokenManager.clearToken()
                     return@withContext Result.failure(Exception("Tu sesion rapida expiro. Inicia sesion de nuevo."))
                 }
-
-                val errorBody = e.response()?.errorBody()?.string()
-                val errorMessage = try {
-                    JSONObject(errorBody).getString("detail")
-                } catch (jsonException: Exception) {
-                    "Error desconocido en el servidor (${e.code()})"
-                }
-                Result.failure(Exception(errorMessage))
+                Result.failure(Exception(parseApiError(e)))
             } catch (e: Exception) {
                 Result.failure(Exception("Error de conexion. Verifica tu internet."))
             }
@@ -114,16 +101,19 @@ class AuthRepositoryImpl @Inject constructor(
                 apiService.register(LoginRequest(email, pass))
                 Result.success(true)
             } catch (e: HttpException) {
-                val errorBody = e.response()?.errorBody()?.string()
-                val errorMessage = try {
-                    JSONObject(errorBody).getString("detail")
-                } catch (jsonException: Exception) {
-                    "Error desconocido en el servidor"
-                }
-                Result.failure(Exception(errorMessage))
+                Result.failure(Exception(parseApiError(e)))
             } catch (e: Exception) {
                 Result.failure(Exception("Error de conexión. Revisa tu internet."))
             }
+        }
+    }
+
+    private fun parseApiError(e: HttpException): String {
+        val raw = e.response()?.errorBody()?.string()
+        return try {
+            JSONObject(raw).getString("detail")
+        } catch (_: Exception) {
+            "Error del servidor (${e.code()})"
         }
     }
 }

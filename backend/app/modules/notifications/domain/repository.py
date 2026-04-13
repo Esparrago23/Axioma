@@ -25,3 +25,7 @@ class NotificationRepository(ABC):
         exclude_user_id: int,
     ) -> list[NotificationRecipient]:
         pass
+
+    @abstractmethod
+    def find_recipients_by_user_ids(self, user_ids: list[int]) -> list[NotificationRecipient]:
+        pass

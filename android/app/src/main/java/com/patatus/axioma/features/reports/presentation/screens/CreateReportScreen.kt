@@ -54,6 +54,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringArrayResource
+import com.patatus.axioma.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +66,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.patatus.axioma.core.hardware.camera.rememberCameraCaptureLauncher
 import com.patatus.axioma.core.hardware.camera.rememberCameraPermissionRequester
+import com.patatus.axioma.core.hardware.location.LocationCapture
+import com.patatus.axioma.core.hardware.location.LocationPermissionStatus
+import com.patatus.axioma.core.hardware.location.LocationResult2
+import com.patatus.axioma.core.hardware.location.rememberLocationPermissionState
 import com.patatus.axioma.features.reports.presentation.viewmodels.CreateReportViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,11 +78,29 @@ fun CreateReportScreen(
     viewModel: CreateReportViewModel = hiltViewModel(),
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val title = viewModel.title.collectAsStateWithLifecycle()
     val description = viewModel.description.collectAsStateWithLifecycle()
     val category = viewModel.category.collectAsStateWithLifecycle()
     val evidencePhotoUri = viewModel.evidencePhotoUri.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val permissionState = rememberLocationPermissionState()
+
+    LaunchedEffect(Unit) {
+        if (permissionState.status != LocationPermissionStatus.GRANTED) {
+            permissionState.requestPermission()
+        }
+    }
+
+    LaunchedEffect(permissionState.status) {
+        if (permissionState.status == LocationPermissionStatus.GRANTED) {
+            val result = LocationCapture(context).getCurrentLocation()
+            if (result is LocationResult2.Success) {
+                viewModel.onLocationChanged(result.coordinates.latitude, result.coordinates.longitude)
+            }
+        }
+    }
 
     var expanded by remember { mutableStateOf(false) }
     var showPhotoSourceSheet by remember { mutableStateOf(false) }
@@ -95,7 +120,7 @@ fun CreateReportScreen(
         viewModel.onEvidencePhotoSelected(photoUri.toString())
     }
 
-    val categories = listOf("INFRAESTRUCTURA", "SEGURIDAD", "SANITIZACION", "VANDALISMO", "SOCIAL")
+    val categories = stringArrayResource(R.array.report_categories).toList()
 
     LaunchedEffect(cameraPermission.hasPermission, pendingCameraLaunch) {
         if (cameraPermission.hasPermission && pendingCameraLaunch) {
@@ -223,7 +248,7 @@ fun CreateReportScreen(
             // 1. Input de Título
             OutlinedTextField(
                 value = title.value,
-                onValueChange = { viewModel.title.value = it },
+                onValueChange = { viewModel.onTitleChanged(it) },
                 label = { Text("¿Qué está pasando?") },
                 placeholder = { Text("Ej: Bache enorme en la calle") },
                 leadingIcon = { Icon(Icons.Default.Title, contentDescription = null) },
@@ -269,7 +294,7 @@ fun CreateReportScreen(
                         DropdownMenuItem(
                             text = { Text(selectionOption) },
                             onClick = {
-                                viewModel.category.value = selectionOption
+                                viewModel.onCategoryChanged(selectionOption)
                                 expanded = false
                             },
                             contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
@@ -281,7 +306,7 @@ fun CreateReportScreen(
             // 3. Input de Descripción
             OutlinedTextField(
                 value = description.value,
-                onValueChange = { viewModel.description.value = it },
+                onValueChange = { viewModel.onDescriptionChanged(it) },
                 label = { Text("Detalles del problema") },
                 placeholder = { Text("Describe la situación con más detalle...") },
                 leadingIcon = {
